@@ -1,0 +1,78 @@
+<!--pages/add-pet/add-pet.wxml - 添加/编辑宠物页-->
+<view class="container">
+  <view class="form-card card">
+    <!-- 头像 -->
+    <view class="avatar-section">
+      <image class="avatar-preview" src="{{avatarUrl || '/assets/images/default-pet.svg'}}" mode="aspectFill"></image>
+      <view class="avatar-actions">
+        <button class="avatar-btn" bindtap="chooseAvatar">📷 更换头像</button>
+      </view>
+    </view>
+
+    <!-- 表单 -->
+    <view class="form-section">
+      <view class="form-item">
+        <text class="form-label">宠物昵称 *</text>
+        <input class="input-field" placeholder="给它起个名字吧" value="{{petName}}" bindinput="onPetNameInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">品种 *</text>
+        <input class="input-field" placeholder="例如：豹纹守宫、玉米蛇" value="{{species}}" bindinput="onSpeciesInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">到家日期</text>
+        <!-- 方式 1：使用 picker 选择器 -->
+        <picker mode="date" value="{{arrivalDate}}" start="2020-01-01" end="{{today}}" bindchange="onArrivalDateChange">
+          <view class="picker-field {{!arrivalDate ? 'placeholder' : ''}}" hover-class="picker-hover">
+            <text class="picker-text">{{arrivalDate || '选择日期'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+        <!-- 方式 2：如果 picker 不响应，可以用输入框（取消注释使用）
+        <input class="input-field" type="text" placeholder="YYYY-MM-DD 格式，如：2024-01-15" value="{{arrivalDate}}" bindinput="onArrivalDateInput" />
+        -->
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">初始体重 (g)</text>
+        <input class="input-field" type="digit" placeholder="例如：50" value="{{initialWeight}}" bindinput="onInitialWeightInput" />
+      </view>
+
+      <view class="divider"></view>
+
+      <view class="form-item">
+        <text class="form-label">喂食频率 (天) *</text>
+        <view class="frequency-selector">
+          <view class="freq-btn {{feedInterval === 1 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="1">1 天</view>
+          <view class="freq-btn {{feedInterval === 2 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="2">2 天</view>
+          <view class="freq-btn {{feedInterval === 3 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="3">3 天</view>
+          <view class="freq-btn {{feedInterval === 5 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="5">5 天</view>
+          <view class="freq-btn {{feedInterval === 7 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="7">7 天</view>
+          <view class="freq-btn {{![1,2,3,5,7].includes(feedInterval) ? 'active' : ''}}" bindtap="setFeedInterval" data-days="custom">自定义</view>
+        </view>
+        <input wx:if="{{showCustomFeed}}" class="input-field mt-16" type="digit" placeholder="输入天数" value="{{customFeedInterval}}" bindinput="onCustomFeedInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">垫材更换频率 (天) *</text>
+        <view class="frequency-selector">
+          <view class="freq-btn {{subInterval === 7 ? 'active' : ''}}" bindtap="setSubInterval" data-days="7">7 天</view>
+          <view class="freq-btn {{subInterval === 10 ? 'active' : ''}}" bindtap="setSubInterval" data-days="10">10 天</view>
+          <view class="freq-btn {{subInterval === 14 ? 'active' : ''}}" bindtap="setSubInterval" data-days="14">14 天</view>
+          <view class="freq-btn {{subInterval === 15 ? 'active' : ''}}" bindtap="setSubInterval" data-days="15">15 天</view>
+          <view class="freq-btn {{subInterval === 30 ? 'active' : ''}}" bindtap="setSubInterval" data-days="30">30 天</view>
+          <view class="freq-btn {{![7,10,14,15,30].includes(subInterval) ? 'active' : ''}}" bindtap="setSubInterval" data-days="custom">自定义</view>
+        </view>
+        <input wx:if="{{showCustomSub}}" class="input-field mt-16" type="digit" placeholder="输入天数" value="{{customSubInterval}}" bindinput="onCustomSubInput" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-section">
+    <button class="submit-btn" bindtap="onSubmit">{{isEdit ? '保存修改' : '添加宠物'}}</button>
+    <button wx:if="{{isEdit}}" class="delete-btn" bindtap="onDelete">删除宠物</button>
+  </view>
+</view>

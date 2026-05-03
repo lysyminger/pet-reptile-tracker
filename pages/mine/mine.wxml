@@ -1,0 +1,64 @@
+<!--pages/mine/mine.wxml - 我的页面-->
+<view class="container">
+  <!-- 用户信息卡片 -->
+  <view class="user-card card">
+    <view class="user-header">
+      <view class="user-info">
+        <text class="user-nickname">👤 {{userInfo.nickname || '爬宠爱好者'}}</text>
+        <text class="user-id">ID: {{openid ? openid.substr(0, 8) : '???'}}...</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据统计 -->
+  <view class="stats-card card">
+    <view class="stats-title">我的数据</view>
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-number">{{stats.petsCount}}</text>
+        <text class="stat-label">宠物数量</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{stats.feedCount}}</text>
+        <text class="stat-label">喂食次数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{stats.currentWeight}}</text>
+        <text class="stat-label">目前体重 (g)</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{stats.daysCount}}</text>
+        <text class="stat-label">喂养天数</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="menu-list">
+    <view class="menu-item" bindtap="onExportData">
+      <text class="menu-icon">📤</text>
+      <text class="menu-text">导出数据</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="onBackup">
+      <text class="menu-icon">☁️</text>
+      <text class="menu-text">数据备份</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="onFAQ">
+      <text class="menu-icon">❓</text>
+      <text class="menu-text">常见问题</text>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="onAbout">
+      <text class="menu-icon">ℹ️</text>
+      <text class="menu-text">关于我们</text>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 版本信息 -->
+  <view class="version-info">
+    <text class="version-text">Version 1.0.0</text>
+  </view>
+</view>

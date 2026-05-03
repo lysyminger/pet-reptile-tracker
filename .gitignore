@@ -1,0 +1,18 @@
+# WeChat DevTools
+project.private.config.json
+
+# Cloud function dependencies
+cloudfunctions/*/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sensitive config
+*.env
+
+# Unused template scaffold
+miniprogram/
+
+# Test files
+test.txt

@@ -1,0 +1,411 @@
+/* pages/index/index.wxss - 首页样式 */
+
+.container {
+  padding-bottom: 40rpx;
+}
+
+/* 头部日期 */
+.header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx 24rpx 24rpx;
+}
+
+.date-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-text {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.weekday-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-top: 8rpx;
+}
+
+.weather-info {
+  padding: 12rpx 24rpx;
+  background-color: var(--card-bg);
+  border-radius: 32rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+
+.weather-text {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+/* 概览卡片 */
+.overview-card {
+  margin: 0 24rpx 32rpx;
+}
+
+.overview-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-bottom: 24rpx;
+}
+
+.overview-stats {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-number {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-top: 8rpx;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background-color: var(--border-color);
+}
+
+/* 章节标题 */
+.section-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.section-title text:first-child {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.section-subtitle {
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-left: 16rpx;
+}
+
+/* 待办列表 */
+.todo-list {
+  padding: 0 24rpx;
+}
+
+.todo-item {
+  border-left-width: 6rpx !important;
+  border-left-style: solid;
+}
+
+.todo-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.pet-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  background-color: var(--bg-color);
+}
+
+.todo-info {
+  flex: 1;
+}
+
+.todo-pet-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.todo-task-type {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-top: 8rpx;
+}
+
+.task-icon {
+  font-size: 28rpx;
+  margin-right: 8rpx;
+}
+
+.task-text {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+}
+
+.todo-status {
+  margin-left: 16rpx;
+}
+
+.status-badge {
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+  font-size: 22rpx;
+  color: #FFFFFF;
+}
+
+.todo-footer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--border-color);
+}
+
+.todo-next-date {
+  font-size: 24rpx;
+  color: var(--text-hint);
+}
+
+.checkin-btn {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  font-size: 26rpx;
+  padding: 12rpx 32rpx;
+  border-radius: 28rpx;
+  border: none;
+}
+
+.checkin-btn:active {
+  background-color: var(--primary-dark);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 48rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 32rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: var(--text-primary);
+  margin-bottom: 16rpx;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: var(--text-hint);
+}
+
+/* 清闲卡片 */
+.relax-card {
+  margin: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48rpx 24rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.relax-icon {
+  font-size: 80rpx;
+  margin-bottom: 16rpx;
+}
+
+.relax-text {
+  font-size: 30rpx;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.relax-pet {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+}
+
+/* 最近打卡 */
+.recent-list {
+  padding: 0 24rpx;
+}
+
+.recent-item {
+  padding: 24rpx;
+}
+
+.recent-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.recent-pet-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.recent-date {
+  font-size: 24rpx;
+  color: var(--text-hint);
+}
+
+.recent-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.recent-type {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-right: 24rpx;
+}
+
+.recent-detail {
+  font-size: 24rpx;
+  color: var(--text-hint);
+}
+
+/* 弹窗样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.modal-content {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #FFFFFF;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx;
+  z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.modal-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  font-size: 32rpx;
+  color: var(--text-hint);
+  padding: 8rpx;
+}
+
+.modal-body {
+  margin-bottom: 32rpx;
+}
+
+.form-item {
+  margin-bottom: 32rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-bottom: 16rpx;
+}
+
+.form-value {
+  font-size: 28rpx;
+  color: var(--text-primary);
+  font-weight: bold;
+}
+
+.food-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.food-tag {
+  padding: 12rpx 24rpx;
+  background-color: var(--bg-color);
+  border-radius: 28rpx;
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-right: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.food-tag.active {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+}
+
+.picker-value {
+  padding: 20rpx 24rpx;
+  background-color: var(--bg-color);
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: var(--text-primary);
+}
+
+.modal-footer {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.modal-btn {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: 44rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.modal-btn.cancel {
+  background-color: var(--bg-color);
+  color: var(--text-secondary);
+}
+
+.modal-btn.confirm {
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+}

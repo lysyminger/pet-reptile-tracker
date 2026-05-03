@@ -1,0 +1,148 @@
+/* pages/pets/pets.wxss - 宠物列表页样式 */
+
+.container {
+  padding: 24rpx;
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.header-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.header-count {
+  font-size: 28rpx;
+  color: var(--text-hint);
+}
+
+.add-pet-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.add-icon {
+  font-size: 40rpx;
+  color: #FFFFFF;
+  margin-right: 16rpx;
+}
+
+.add-text {
+  font-size: 30rpx;
+  color: #FFFFFF;
+  font-weight: bold;
+}
+
+.pets-list {
+  padding-bottom: 40rpx;
+}
+
+.pet-item {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pet-item-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx;
+}
+
+.pet-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  margin-right: 24rpx;
+  background-color: var(--bg-color);
+}
+
+.pet-item-info {
+  flex: 1;
+}
+
+.pet-item-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.pet-item-species {
+  font-size: 26rpx;
+  color: var(--text-secondary);
+  margin-top: 8rpx;
+}
+
+.pet-item-arrow {
+  font-size: 40rpx;
+  color: var(--text-hint);
+  padding-right: 16rpx;
+}
+
+.pet-item-stats {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  padding: 24rpx;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-bottom: 8rpx;
+}
+
+.stat-value {
+  font-size: 26rpx;
+  color: var(--text-primary);
+  font-weight: bold;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 50rpx;
+  background-color: var(--border-color);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 160rpx 48rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: var(--text-primary);
+  margin-bottom: 16rpx;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: var(--text-hint);
+}
