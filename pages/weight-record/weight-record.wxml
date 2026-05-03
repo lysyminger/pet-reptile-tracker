@@ -1,0 +1,79 @@
+<!--pages/weight-record/weight-record.wxml - 体重/打卡记录页-->
+<view class="container">
+  <view class="form-card card">
+    <view class="pet-info">
+      <text class="pet-name">{{petName}}</text>
+      <text class="record-type">{{recordTypeText}}</text>
+    </view>
+
+    <!-- 体重录入 -->
+    <view wx:if="{{recordType === 'weight'}}">
+      <view class="form-item">
+        <text class="form-label">体重 (g) *</text>
+        <input class="input-field weight-input" type="digit" placeholder="0.00" value="{{weight}}" bindinput="onWeightInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">记录日期</text>
+        <picker mode="date" value="{{recordDate}}" bindchange="onDateChange">
+          <view class="picker-field">{{recordDate}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 喂食录入 -->
+    <view wx:if="{{recordType === 'feed'}}">
+      <view class="form-item">
+        <text class="form-label">食物种类 *</text>
+        <view class="food-tags">
+          <view class="food-tag {{selectedFood === item ? 'active' : ''}}" 
+                wx:for="{{foodOptions}}" wx:key="{{item}}" 
+                bindtap="selectFood" data-food="{{item}}">
+            {{item}}
+          </view>
+        </view>
+        <input class="input-field mt-16" placeholder="或输入其他食物" value="{{customFood}}" bindinput="onCustomFoodInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">数量/备注</text>
+        <input class="input-field" placeholder="例如：3 只 / 5g" value="{{amount}}" bindinput="onAmountInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">打卡日期</text>
+        <picker mode="date" value="{{recordDate}}" bindchange="onDateChange">
+          <view class="picker-field">{{recordDate}}</view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 垫材录入 -->
+    <view wx:if="{{recordType === 'substrate'}}">
+      <view class="form-item">
+        <text class="form-label">垫材种类</text>
+        <view class="food-tags">
+          <view class="food-tag {{selectedSubstrate === item ? 'active' : ''}}" 
+                wx:for="{{substrateOptions}}" wx:key="{{item}}" 
+                bindtap="selectSubstrate" data-substrate="{{item}}">
+            {{item}}
+          </view>
+        </view>
+        <input class="input-field mt-16" placeholder="或输入其他垫材" value="{{customSubstrate}}" bindinput="onCustomSubstrateInput" />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">更换日期</text>
+        <picker mode="date" value="{{recordDate}}" bindchange="onDateChange">
+          <view class="picker-field">{{recordDate}}</view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-section">
+    <button class="submit-btn" bindtap="onSubmit">保存记录</button>
+    <button wx:if="{{canDelete}}" class="delete-btn" bindtap="onDelete">删除记录</button>
+  </view>
+</view>

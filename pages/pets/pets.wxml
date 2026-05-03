@@ -1,0 +1,59 @@
+<!--pages/pets/pets.wxml - 宠物列表页-->
+<view class="container">
+  <!-- 头部 -->
+  <view class="header">
+    <text class="header-title">我的爱宠</text>
+    <text class="header-count">{{pets.length}} 只</text>
+  </view>
+
+  <!-- 添加宠物按钮 -->
+  <view class="add-pet-btn" bindtap="onAddPet">
+    <text class="add-icon">+</text>
+    <text class="add-text">添加新宠物</text>
+  </view>
+
+  <!-- 宠物列表 -->
+  <view class="pets-list" wx:if="{{pets.length > 0}}">
+    <view class="pet-item card" wx:for="{{pets}}" wx:key="_id" bindtap="onPetTap" data-petid="{{item._id}}">
+      <view class="pet-item-header">
+        <image class="pet-avatar" src="{{item.avatar || '/assets/images/default-pet.svg'}}" mode="aspectFill"></image>
+        <view class="pet-item-info flex-1">
+          <view class="pet-item-name">{{item.name}}</view>
+          <view class="pet-item-species">{{item.species}}</view>
+        </view>
+        <view class="pet-item-arrow">›</view>
+      </view>
+
+      <view class="divider"></view>
+
+      <view class="pet-item-stats">
+        <view class="stat-item">
+          <text class="stat-label">喂食</text>
+          <text class="stat-value {{item.feedStatus === 'overdue' ? 'text-danger' : (item.feedStatus === 'today' ? 'text-warning' : (item.feedStatus === 'upcoming' ? 'text-success' : 'text-hint'))}}">
+            {{item.feedStatusText}}
+          </text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <text class="stat-label">垫材</text>
+          <text class="stat-value {{item.subStatus === 'overdue' ? 'text-danger' : (item.subStatus === 'today' ? 'text-warning' : (item.subStatus === 'upcoming' ? 'text-success' : 'text-hint'))}}">
+            {{item.subStatusText}}
+          </text>
+        </view>
+        <view class="stat-divider"></view>
+        <view class="stat-item">
+          <text class="stat-label">体重</text>
+          <text class="stat-value">{{item.latestWeight ? item.latestWeight + 'g' : '--'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{pets.length === 0}}">
+    <text class="empty-icon">🦎</text>
+    <text class="empty-text">还没有爱宠</text>
+    <text class="empty-hint">添加第一只爬宠开始记录吧</text>
+    <button class="btn-primary mt-24" bindtap="onAddPet">添加宠物</button>
+  </view>
+</view>

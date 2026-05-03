@@ -1,0 +1,157 @@
+<!--pages/index/index.wxml - 首页-->
+<view class="container">
+  <!-- 日期头部 -->
+  <view class="header">
+    <view class="date-info">
+      <text class="date-text">{{currentDate}}</text>
+      <text class="weekday-text">{{weekday}}</text>
+    </view>
+    <view class="weather-info" wx:if="{{weather}}">
+      <text class="weather-text">{{weather}}</text>
+    </view>
+  </view>
+
+  <!-- 状态概览 -->
+  <view class="overview-card card">
+    <view class="overview-title">今日概览</view>
+    <view class="overview-stats">
+      <view class="stat-item">
+        <text class="stat-number" style="color: {{todoCount > 0 ? 'var(--danger-color)' : 'var(--success-color)'}}">{{todoCount}}</text>
+        <text class="stat-label">待完成</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-number">{{completedCount}}</text>
+        <text class="stat-label">已完成</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-number">{{petsCount}}</text>
+        <text class="stat-label">爱宠数量</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 待办事项列表 -->
+  <view class="section-title">
+    <text>待办事项</text>
+    <text class="section-subtitle" wx:if="{{todoList.length > 0}}">共 {{todoList.length}} 项</text>
+  </view>
+
+  <!-- 待办列表 -->
+  <view class="todo-list" wx:if="{{todoList.length > 0}}">
+    <view class="todo-item card" wx:for="{{todoList}}" wx:key="unique" style="border-left: 6rpx solid {{item.isOverdue ? 'var(--danger-color)' : 'var(--primary-color)'}}">
+      <view class="todo-header">
+        <image class="pet-avatar" src="{{item.avatar || '/assets/images/default-pet.svg'}}" mode="aspectFill"></image>
+        <view class="todo-info flex-1">
+          <view class="todo-pet-name">{{item.petName}}</view>
+          <view class="todo-task-type">
+            <text class="task-icon">{{item.taskType === 'feed' ? '🍖' : '🧹'}}</text>
+            <text class="task-text">{{item.taskType === 'feed' ? '喂食' : '换垫材'}}</text>
+          </view>
+        </view>
+        <view class="todo-status">
+          <view class="status-badge" style="background-color: {{item.isOverdue ? 'var(--danger-color)' : 'var(--warning-color)'}}">
+            {{item.isOverdue ? (item.overdueDays ? '已逾期 ' + item.overdueDays + ' 天' : '已逾期') : '今日'}}
+          </view>
+        </view>
+      </view>
+      
+      <view class="todo-footer">
+        <text class="todo-next-date">下次：{{item.nextDate && item.nextDate.indexOf('NaN') === -1 ? item.nextDate : '未设置'}}</text>
+        <button class="checkin-btn" bindtap="onCheckIn" data-pet-id="{{item.petId}}" data-task-type="{{item.taskType}}">打卡</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{todoList.length === 0}}">
+    <text class="empty-icon">🎉</text>
+    <text class="empty-text">今天没有任务！</text>
+    <text class="empty-hint">好好享受和爱宠的时光吧～</text>
+  </view>
+
+  <!-- 清闲状态提示 -->
+  <view class="relax-card card" wx:if="{{relaxInfo && todoList.length === 0}}">
+    <view class="relax-icon">😌</view>
+    <view class="relax-text">距离下次喂食还有 {{relaxInfo.days}} 天</view>
+    <view class="relax-pet" wx:if="{{relaxInfo.petName}}">{{relaxInfo.petName}}</view>
+  </view>
+
+  <!-- 最近打卡记录 -->
+  <view class="section-title mt-24">
+    <text>最近打卡</text>
+  </view>
+
+  <view class="recent-list" wx:if="{{recentRecords.length > 0}}">
+    <view class="recent-item card" wx:for="{{recentRecords}}" wx:key="id">
+      <view class="recent-header">
+        <text class="recent-pet-name">{{item.petName}}</text>
+        <text class="recent-date">{{item.date}}</text>
+      </view>
+      <view class="recent-content">
+        <text class="recent-type">{{item.type === 'feed' ? '🍖 喂食' : '🧹 换垫材'}}</text>
+        <text class="recent-detail" wx:if="{{item.detail}}">{{item.detail}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 打卡弹窗 -->
+<view class="modal-mask" wx:if="{{showFeedModal}}" catchtap="closeModal"></view>
+<view class="modal-content" wx:if="{{showFeedModal}}">
+  <view class="modal-header">
+    <text class="modal-title">{{currentTaskType === 'feed' ? '喂食打卡' : '换垫材打卡'}}</text>
+    <text class="modal-close" bindtap="closeModal">✕</text>
+  </view>
+  
+  <view class="modal-body">
+    <view class="form-item">
+      <text class="form-label">宠物</text>
+      <text class="form-value">{{currentPetName}}</text>
+    </view>
+    
+    <!-- 喂食任务才显示食物选项 -->
+    <view class="form-item" wx:if="{{currentTaskType === 'feed'}}">
+      <text class="form-label">食物种类</text>
+      <view class="food-tags">
+        <view class="food-tag {{selectedFood === item ? 'active' : ''}}" 
+              wx:for="{{foodOptions}}" wx:key="{{item}}" 
+              bindtap="selectFood" data-food="{{item}}">
+          {{item}}
+        </view>
+      </view>
+      <input class="input-field mt-16" placeholder="或输入其他食物" bindinput="onFoodInput" value="{{customFood}}" />
+    </view>
+    
+    <!-- 垫材任务才显示垫材选项 -->
+    <view class="form-item" wx:if="{{currentTaskType === 'substrate'}}">
+      <text class="form-label">垫材种类</text>
+      <view class="food-tags">
+        <view class="food-tag {{selectedSubstrate === item ? 'active' : ''}}" 
+              wx:for="{{substrateOptions}}" wx:key="{{item}}" 
+              bindtap="selectSubstrate" data-substrate="{{item}}">
+          {{item}}
+        </view>
+      </view>
+      <input class="input-field mt-16" placeholder="或输入其他垫材" bindinput="onSubstrateInput" value="{{customSubstrate}}" />
+    </view>
+    
+    <view class="form-item">
+      <text class="form-label">{{currentTaskType === 'feed' ? '数量/备注' : '垫材类型/备注'}}</text>
+      <input class="input-field" placeholder="{{currentTaskType === 'feed' ? '例如：3 只 / 5g' : '例如：厨房纸 / 爬沙'}}" bindinput="onAmountInput" value="{{feedAmount}}" />
+    </view>
+    
+    <view class="form-item">
+      <text class="form-label">打卡日期</text>
+      <picker mode="date" value="{{feedDate}}" bindchange="onDateChange">
+        <view class="picker-value">{{feedDate}}</view>
+      </picker>
+    </view>
+  </view>
+  
+  <view class="modal-footer">
+    <button class="modal-btn cancel" bindtap="closeModal">取消</button>
+    <button class="modal-btn confirm" bindtap="confirmFeed">确认打卡</button>
+  </view>
+</view>

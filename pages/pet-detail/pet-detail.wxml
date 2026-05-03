@@ -1,0 +1,153 @@
+<!--pages/pet-detail/pet-detail.wxml - 宠物详情页-->
+<view class="container">
+  <!-- 宠物信息卡片 -->
+  <view class="pet-info-card card">
+    <view class="pet-info-header">
+      <image class="pet-avatar" src="{{petInfo.avatar || '/assets/images/default-pet.svg'}}" mode="aspectFill" bindtap="onPreviewAvatar"></image>
+      <view class="pet-info-text">
+        <text class="pet-name">{{petInfo.name}}</text>
+        <text class="pet-species">{{petInfo.species}}</text>
+      </view>
+      <view class="edit-btn" bindtap="onEditPet">✎</view>
+    </view>
+    
+    <view class="pet-details">
+      <view class="detail-item">
+        <text class="detail-label">到家日期</text>
+        <text class="detail-value">{{petInfo.arrivalDate || '--'}}</text>
+      </view>
+      <view class="detail-item">
+        <text class="detail-label">初始体重</text>
+        <text class="detail-value">{{petInfo.initialWeight ? petInfo.initialWeight + 'g' : '--'}}</text>
+      </view>
+      <view class="detail-item">
+        <text class="detail-label">喂食频率</text>
+        <text class="detail-value">{{petInfo.feed_interval}}天/次</text>
+      </view>
+      <view class="detail-item">
+        <text class="detail-label">垫材频率</text>
+        <text class="detail-value">{{petInfo.sub_interval}}天/次</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷操作 -->
+  <view class="quick-actions">
+    <view class="action-btn" bindtap="onFeedCheckIn">
+      <text class="action-icon">🍖</text>
+      <text class="action-text">喂食打卡</text>
+    </view>
+    <view class="action-btn" bindtap="onSubstrateCheckIn">
+      <text class="action-icon">🧹</text>
+      <text class="action-text">换垫材</text>
+    </view>
+    <view class="action-btn" bindtap="onWeightRecord">
+      <text class="action-icon">⚖️</text>
+      <text class="action-text">记录体重</text>
+    </view>
+  </view>
+
+  <!-- 下次提醒 -->
+  <view class="next-reminder card" wx:if="{{hasFeedSchedule || hasSubSchedule}}">
+    <view class="reminder-title">下次提醒</view>
+    <view class="reminder-items">
+      <view class="reminder-item" wx:if="{{hasFeedSchedule}}">
+        <text class="reminder-icon">🍖</text>
+        <view class="reminder-info">
+          <text class="reminder-label">喂食</text>
+          <text class="reminder-date {{isFeedOverdue ? 'text-danger' : ''}}">{{nextFeedDate}} {{isFeedOverdue ? '(已逾期)' : ''}}</text>
+        </view>
+      </view>
+      <view class="reminder-item" wx:if="{{hasSubSchedule}}">
+        <text class="reminder-icon">🧹</text>
+        <view class="reminder-info">
+          <text class="reminder-label">垫材</text>
+          <text class="reminder-date {{isSubOverdue ? 'text-danger' : ''}}">{{nextSubDate}} {{isSubOverdue ? '(已逾期)' : ''}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 体重图表 -->
+  <view class="section-title">
+    <text>成长曲线</text>
+    <text class="section-subtitle">{{weightRecords.length}} 条记录</text>
+  </view>
+
+  <view class="chart-card card">
+    <!-- 可滑动的图表容器 -->
+    <scroll-view class="chart-scroll" scroll-x="true" wx:if="{{weightRecords.length > 0}}" bindscroll="onChartScroll" scroll-left="{{chartScrollLeft}}">
+      <view class="chart-wrapper" style="width: {{chartContainerWidth}}px;">
+        <canvas type="2d" id="weightChart" canvas-id="weightChart" class="weight-chart"></canvas>
+        <!-- 图表下方的日期对照条 -->
+        <view class="chart-date-bar" style="width: {{chartContainerWidth}}px;">
+          <view class="chart-date-item" wx:for="{{chartDataPoints}}" wx:key="index" wx:for-index="index" style="left: {{item.position}}px;">
+            <text class="chart-date-text">{{weightRecords[index].record_date}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="empty-chart" wx:if="{{weightRecords.length === 0}}">
+      <text class="empty-chart-icon">📈</text>
+      <text class="empty-chart-text">暂无体重记录</text>
+    </view>
+    <!-- 日期对照表 -->
+    <scroll-view class="date-table-scroll" scroll-x="true" wx:if="{{weightRecords.length > 0}}" bindscroll="onDateTableScroll" scroll-left="{{tableScrollLeft}}">
+      <view class="date-table">
+        <view class="date-table-header">
+          <view class="date-table-cell" wx:for="{{weightRecords}}" wx:key="index" wx:for-index="index">
+            <view class="date-cell-wrapper">
+              <text class="date-cell">{{item.record_date}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="date-table-body">
+          <view class="date-table-cell" wx:for="{{weightRecords}}" wx:key="index" wx:for-index="index">
+            <text class="weight-cell">{{item.weight}}g</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="chart-stats">
+      <view class="chart-stat">
+        <text class="stat-label">初始</text>
+        <text class="stat-value">{{initialWeight}}g</text>
+      </view>
+      <view class="chart-stat">
+        <text class="stat-label">当前</text>
+        <text class="stat-value">{{currentWeight}}g</text>
+      </view>
+      <view class="chart-stat">
+        <text class="stat-label">增长</text>
+        <text class="stat-value {{weightGain > 0 ? 'text-success' : 'text-danger'}}">{{weightGain > 0 ? '+' : ''}}{{weightGain}}g</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:if="{{weightRecords.length === 0}}">
+    <text class="empty-icon">📈</text>
+    <text class="empty-text">暂无体重记录</text>
+    <button class="btn-primary mt-24" bindtap="onWeightRecord">记录第一次体重</button>
+  </view>
+
+  <!-- 历史记录 -->
+  <view class="section-title mt-24">
+    <text>历史记录</text>
+  </view>
+
+  <view class="history-list" wx:if="{{historyRecords.length > 0}}">
+    <view class="history-item card" wx:for="{{historyRecords}}" wx:key="id">
+      <view class="history-header">
+        <text class="history-type">{{item.type === 'feed' ? '🍖 喂食' : (item.type === 'substrate' ? '🧹 垫材' : '⚖️ 体重')}}</text>
+        <text class="history-date">{{item.date}}</text>
+      </view>
+      <view class="history-detail">
+        <text wx:if="{{item.detail}}">{{item.detail}}</text>
+        <text wx:if="{{item.weight}}">{{item.weight}}g</text>
+      </view>
+      <view class="history-actions">
+        <text class="delete-action" bindtap="onDeleteRecord" data-item="{{item}}">删除</text>
+      </view>
+    </view>
+  </view>
+</view>
