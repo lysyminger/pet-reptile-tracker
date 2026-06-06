@@ -1,6 +1,7 @@
 // pages/pet-detail/pet-detail.js
 const app = getApp();
 const cache = require('../../utils/cache.js');
+const api = require('../../utils/api.js');
 
 Page({
   data: {
@@ -189,14 +190,12 @@ Page({
     return pet;
   },
   
-  // 从数据库获取宠物信息
+  // 从后端获取宠物信息
   fetchPetInfo() {
-    if (!wx.cloud) {
-      return Promise.resolve({});
-    }
-
-    const db = wx.cloud.database();
-    return db.collection('pet_info').doc(this.data.petId).get().then(res => res.data);
+    return api.get('/pets/' + this.data.petId).catch(err => {
+      console.error('fetchPetInfo 失败:', err);
+      return {};
+    });
   },
   
   // 获取体重记录（带缓存）
@@ -219,18 +218,15 @@ Page({
     return records;
   },
   
-  // 从数据库获取体重记录
+  // 从后端获取体重记录
   fetchWeightRecords() {
-    if (!wx.cloud) {
-      return Promise.resolve([]);
-    }
-
-    const db = wx.cloud.database();
-    return db.collection('weight_logs')
-      .where({ pet_id: this.data.petId })
-      .orderBy('record_date', 'desc')
-      .get()
-      .then(res => res.data);
+    return api.get('/weight-logs', {
+      pet_id: this.data.petId,
+      order_by: 'record_date_desc'
+    }).then(res => Array.isArray(res) ? res : []).catch(err => {
+      console.error('fetchWeightRecords 失败:', err);
+      return [];
+    });
   },
   
   // 获取历史记录（带缓存）
@@ -253,28 +249,27 @@ Page({
     return records;
   },
   
-  // 从数据库获取历史记录
+  // 从后端获取历史记录
   async fetchHistoryRecords() {
-    if (!wx.cloud) {
-      return Promise.resolve([]);
+    try {
+      const petId = this.data.petId;
+      const [feedLogs, subLogs, weightLogs] = await Promise.all([
+        api.get('/feed-logs',      { pet_id: petId, order_by: 'feed_date_desc',   limit: 10 }),
+        api.get('/substrate-logs', { pet_id: petId, order_by: 'change_date_desc', limit: 10 }),
+        api.get('/weight-logs',    { pet_id: petId, order_by: 'record_date_desc', limit: 10 })
+      ]);
+
+      const records = [
+        ...(feedLogs   || []).map(r => ({ id: r._id, type: 'feed',      date: r.feed_date,   detail: `${r.food_type} ${r.amount || ''}` })),
+        ...(subLogs    || []).map(r => ({ id: r._id, type: 'substrate', date: r.change_date, detail: r.sub_type || '' })),
+        ...(weightLogs || []).map(r => ({ id: r._id, type: 'weight',    date: r.record_date, weight: r.weight }))
+      ];
+      records.sort((a, b) => b.date.localeCompare(a.date));
+      return records.slice(0, 15);
+    } catch (err) {
+      console.error('fetchHistoryRecords 失败:', err);
+      return [];
     }
-
-    const db = wx.cloud.database();
-    
-    const [feedLogs, subLogs, weightLogs] = await Promise.all([
-      db.collection('feed_logs').where({ pet_id: this.data.petId }).orderBy('feed_date', 'desc').limit(10).get(),
-      db.collection('substrate_logs').where({ pet_id: this.data.petId }).orderBy('change_date', 'desc').limit(10).get(),
-      db.collection('weight_logs').where({ pet_id: this.data.petId }).orderBy('record_date', 'desc').limit(10).get()
-    ]);
-
-    const records = [
-      ...feedLogs.data.map(r => ({ id: r._id, type: 'feed', date: r.feed_date, detail: `${r.food_type} ${r.amount || ''}` })),
-      ...subLogs.data.map(r => ({ id: r._id, type: 'substrate', date: r.change_date, detail: r.sub_type || '' })),
-      ...weightLogs.data.map(r => ({ id: r._id, type: 'weight', date: r.record_date, weight: r.weight }))
-    ];
-
-    records.sort((a, b) => b.date.localeCompare(a.date));
-    return records.slice(0, 15);
   },
   
   // 清除当前宠物的缓存
@@ -470,37 +465,25 @@ Page({
           wx.showLoading({ title: '删除中...' });
 
           try {
-            const db = wx.cloud.database();
-            
-            // 根据类型删除对应集合的记录（使用记录 ID）
-            let collection = '';
-            let recordId = item.id;
-            
-            if (item.type === 'feed') {
-              collection = 'feed_logs';
-            } else if (item.type === 'substrate') {
-              collection = 'substrate_logs';
-            } else if (item.type === 'weight') {
-              collection = 'weight_logs';
-            }
+            const recordId = item.id;
+            let endpoint = '';
+            if (item.type === 'feed')      endpoint = '/feed-logs/';
+            else if (item.type === 'substrate') endpoint = '/substrate-logs/';
+            else if (item.type === 'weight')    endpoint = '/weight-logs/';
 
-            if (recordId) {
-              await db.collection(collection).doc(recordId).remove();
-              
-              // 删除后重新计算下次日期
+            if (recordId && endpoint) {
+              await api.del(endpoint + recordId);
+
               if (item.type === 'feed') {
                 await this.recalculateNextDate(petId, 'feed');
               } else if (item.type === 'substrate') {
                 await this.recalculateNextDate(petId, 'substrate');
               }
-              
-              // 清除所有缓存
+
               this.clearPetCache();
-              
+
               wx.hideLoading();
               wx.showToast({ title: '删除成功', icon: 'success' });
-              
-              // 重新加载数据
               this.loadPetDetail();
             } else {
               wx.hideLoading();
@@ -519,34 +502,25 @@ Page({
   // 重新计算下次日期（删除记录后）
   async recalculateNextDate(petId, type) {
     try {
-      const db = wx.cloud.database();
-      
-      // 获取该宠物的所有对应记录（按日期降序）
-      const logs = await db.collection(type === 'feed' ? 'feed_logs' : 'substrate_logs')
-        .where({ pet_id: petId })
-        .orderBy(type === 'feed' ? 'feed_date' : 'change_date', 'desc')
-        .limit(1)
-        .get();
-      
-      // 获取宠物信息
-      const pet = await db.collection('pet_info').doc(petId).get();
-      
-      const fieldName = type === 'feed' ? 'next_feed_date' : 'next_sub_date';
-      const intervalField = type === 'feed' ? 'feed_interval' : 'sub_interval';
-      const dateField = type === 'feed' ? 'feed_date' : 'change_date';
-      
-      if (logs.data.length > 0) {
-        // 有记录：从最后一次日期重新计算
-        const lastDate = logs.data[0][dateField];
-        const nextDate = app.dateAdd(lastDate, pet.data[intervalField]);
-        await db.collection('pet_info').doc(petId).update({
-          data: { [fieldName]: nextDate }
-        });
+      const endpoint    = type === 'feed' ? '/feed-logs' : '/substrate-logs';
+      const orderBy     = type === 'feed' ? 'feed_date_desc' : 'change_date_desc';
+      const dateField   = type === 'feed' ? 'feed_date' : 'change_date';
+      const fieldName   = type === 'feed' ? 'next_feed_date' : 'next_sub_date';
+      const intervalKey = type === 'feed' ? 'feed_interval' : 'sub_interval';
+
+      const [logs, pet] = await Promise.all([
+        api.get(endpoint, { pet_id: petId, order_by: orderBy, limit: 1 }),
+        api.get('/pets/' + petId)
+      ]);
+
+      const logsArr = Array.isArray(logs) ? logs : [];
+
+      if (logsArr.length > 0) {
+        const lastDate = logsArr[0][dateField];
+        const nextDate = app.dateAdd(lastDate, pet[intervalKey]);
+        await api.put('/pets/' + petId, { [fieldName]: nextDate });
       } else {
-        // 没有记录：清空下次日期
-        await db.collection('pet_info').doc(petId).update({
-          data: { [fieldName]: null }
-        });
+        await api.put('/pets/' + petId, { [fieldName]: null });
       }
     } catch (err) {
       console.error('重新计算日期失败:', err);

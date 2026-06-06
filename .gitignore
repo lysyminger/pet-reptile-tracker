@@ -10,6 +10,14 @@ Thumbs.db
 
 # Sensitive config
 *.env
+server/.env
+
+# Database exports (real user data — never commit to a public repo)
+databasejson/
+
+# Build artifacts / packaging
+server.zip
+*.zip
 
 # Unused template scaffold
 miniprogram/

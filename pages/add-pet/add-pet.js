@@ -1,6 +1,7 @@
 // pages/add-pet/add-pet.js
 const app = getApp();
 const cache = require('../../utils/cache.js');
+const api = require('../../utils/api.js');
 
 Page({
   data: {
@@ -20,10 +21,9 @@ Page({
   },
 
   onLoad(options) {
-    // 设置日期选择器最大值（今天）
     const today = app.formatDate(new Date());
     this.setData({ today });
-    
+
     if (options.id) {
       this.setData({ petId: options.id, isEdit: true });
       this.loadPetData();
@@ -32,13 +32,9 @@ Page({
 
   // 加载宠物数据（编辑模式）
   async loadPetData() {
-    if (!wx.cloud || !this.data.petId) return;
-
+    if (!this.data.petId) return;
     try {
-      const db = wx.cloud.database();
-      const res = await db.collection('pet_info').doc(this.data.petId).get();
-      const pet = res.data;
-
+      const pet = await api.get('/pets/' + this.data.petId);
       this.setData({
         avatarUrl: pet.avatar || '',
         petName: pet.name || '',
@@ -62,43 +58,36 @@ Page({
       success: (res) => {
         const tempFilePath = res.tempFilePaths[0];
         this.setData({ avatarUrl: tempFilePath });
-
-        // 上传到云存储
-        if (wx.cloud) {
-          this.uploadAvatar(tempFilePath);
-        }
+        this.uploadAvatar(tempFilePath);
       }
     });
   },
 
-  // 上传头像
+  // 上传头像到自建后端
   async uploadAvatar(filePath) {
     try {
-      const cloudPath = `avatars/${this.data.petId || Date.now()}_${Math.random().toString(36).substr(2, 8)}.png`;
-      const res = await wx.cloud.uploadFile({ cloudPath, filePath });
-      this.avatarFileId = res.fileID;
+      const res = await api.uploadFile(filePath, 'file');
+      if (res && res.url) {
+        this.uploadedAvatarUrl = res.url;
+        this.setData({ avatarUrl: res.url });
+      }
     } catch (err) {
       console.error('上传头像失败:', err);
+      wx.showToast({ title: '头像上传失败', icon: 'none' });
     }
   },
 
-  // 输入处理
   onPetNameInput(e) { this.setData({ petName: e.detail.value }); },
   onSpeciesInput(e) { this.setData({ species: e.detail.value }); },
   onInitialWeightInput(e) { this.setData({ initialWeight: e.detail.value }); },
 
-  // 日期选择（picker）
   onArrivalDateChange(e) {
-    console.log('选择的日期:', e.detail.value);
     this.setData({ arrivalDate: e.detail.value });
   },
-
-  // 日期输入（备用方案）
   onArrivalDateInput(e) {
     this.setData({ arrivalDate: e.detail.value });
   },
 
-  // 设置喂食频率
   setFeedInterval(e) {
     const days = e.currentTarget.dataset.days;
     if (days === 'custom') {
@@ -107,13 +96,10 @@ Page({
       this.setData({ showCustomFeed: false, feedInterval: parseInt(days) });
     }
   },
-
-  // 自定义喂食频率
   onCustomFeedInput(e) {
     this.setData({ customFeedInterval: e.detail.value });
   },
 
-  // 设置垫材频率
   setSubInterval(e) {
     const days = e.currentTarget.dataset.days;
     if (days === 'custom') {
@@ -122,8 +108,6 @@ Page({
       this.setData({ showCustomSub: false, subInterval: parseInt(days) });
     }
   },
-
-  // 自定义垫材频率
   onCustomSubInput(e) {
     this.setData({ customSubInterval: e.detail.value });
   },
@@ -132,7 +116,6 @@ Page({
   async onSubmit() {
     const { petName, species, feedInterval, subInterval, customFeedInterval, customSubInterval } = this.data;
 
-    // 验证必填项
     if (!petName.trim()) {
       wx.showToast({ title: '请输入宠物昵称', icon: 'none' });
       return;
@@ -143,7 +126,7 @@ Page({
     }
 
     const finalFeedInterval = this.data.showCustomFeed ? parseInt(customFeedInterval) || feedInterval : feedInterval;
-    const finalSubInterval = this.data.showCustomSub ? parseInt(customSubInterval) || subInterval : subInterval;
+    const finalSubInterval  = this.data.showCustomSub  ? parseInt(customSubInterval)  || subInterval  : subInterval;
 
     if (finalFeedInterval < 1 || finalSubInterval < 1) {
       wx.showToast({ title: '频率至少为 1 天', icon: 'none' });
@@ -153,6 +136,10 @@ Page({
     wx.showLoading({ title: '保存中...' });
 
     try {
+      // 头像优先使用上传后返回的 URL，回退到原 avatarUrl
+      const avatar = this.uploadedAvatarUrl
+        || (this.data.avatarUrl && this.data.avatarUrl.indexOf('http') === 0 ? this.data.avatarUrl : '');
+
       const petData = {
         name: petName.trim(),
         species: species.trim(),
@@ -160,24 +147,19 @@ Page({
         initialWeight: this.data.initialWeight ? parseFloat(this.data.initialWeight) : 0,
         feed_interval: finalFeedInterval,
         sub_interval: finalSubInterval,
-        user_openid: app.globalData.openid,
-        avatar: this.avatarFileId || this.data.avatarUrl,
-        created_at: wx.cloud ? wx.cloud.database().serverDate() : new Date()
-        // 注意：不设置 next_feed_date 和 next_sub_date
-        // 这两个字段只有在第一次打卡后才会设置
+        avatar
+        // user_openid 由服务端从 token 注入，不要在客户端传
+        // created_at 由服务端默认值生成
+        // next_feed_date / next_sub_date 等首次打卡再设置
       };
 
-      // 新建和编辑模式都不设置下次日期，等待第一次打卡时设置
-
-      if (wx.cloud) {
-        const db = wx.cloud.database();
-
-        if (this.data.isEdit) {
-          await db.collection('pet_info').doc(this.data.petId).update({ data: petData });
-        } else {
-          await db.collection('pet_info').add({ data: petData });
-        }
+      if (this.data.isEdit) {
+        await api.put('/pets/' + this.data.petId, petData);
+      } else {
+        await api.post('/pets', petData);
       }
+
+      cache.removeCache('pets');
 
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
@@ -196,20 +178,19 @@ Page({
       content: '删除后将无法恢复，所有记录也会被删除',
       confirmColor: '#E74C3C',
       success: async (res) => {
-        if (res.confirm && wx.cloud) {
+        if (res.confirm) {
           try {
-            const db = wx.cloud.database();
-            await db.collection('pet_info').doc(this.data.petId).remove();
-            
-            // 清除所有相关缓存
+            await api.del('/pets/' + this.data.petId);
+
             cache.removeCache('pets');
             cache.removeCache('schedule');
             cache.removeCache('weight');
             cache.removeCache('history');
-            
+
             wx.showToast({ title: '已删除', icon: 'success' });
             setTimeout(() => wx.navigateBack(), 1500);
           } catch (err) {
+            console.error('删除失败:', err);
             wx.showToast({ title: '删除失败', icon: 'none' });
           }
         }

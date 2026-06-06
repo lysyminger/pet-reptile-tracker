@@ -1,6 +1,5 @@
 {
   "miniprogramRoot": "./",
-  "cloudfunctionRoot": "./cloudfunctions/",
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -33,13 +32,19 @@
     "packNpmManually": false,
     "packNpmRelationList": [],
     "minifyWXSS": true,
-    "showES6CompileOption": false
+    "showES6CompileOption": false,
+    "compileWorklet": false,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true
   },
-  "appid": "wxXXXXXXXXXXXXXXXX",
+  "appid": "wx72f836c54512f38f",
   "projectname": "pet-reptile",
-  "libVersion": "2.19.4",
-  "cloudfunctionRoot": "cloudfunctions/",
-  "cloudfunctionTemplateRoot": "./cloudfunctionTemplate/",
+  "libVersion": "3.15.1",
   "condition": {},
   "srcMiniprogramRoot": "",
   "compileType": "miniprogram",
@@ -50,5 +55,6 @@
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
-  }
+  },
+  "simulatorPluginLibVersion": {}
 }
