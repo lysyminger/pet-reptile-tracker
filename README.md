@@ -1,70 +1,76 @@
-# 爬宠饲养记 - 小程序维护文档
+# 爬宠饲养记 🦎
 
-> 📅 最后更新：2026-03-26  
-> 📦 版本：1.0.0  
-> 📍 项目路径：`D:\Development\wechatapp\Pet reptile`
-
----
-
-## 📋 目录
-
-1. [项目概述](#项目概述)
-2. [技术架构](#技术架构)
-3. [目录结构](#目录结构)
-4. [数据库设计](#数据库设计)
-5. [核心功能说明](#核心功能说明)
-6. [开发指南](#开发指南)
-7. [部署流程](#部署流程)
-8. [常见问题](#常见问题)
-9. [更新日志](#更新日志)
+> 一款专为爬宠玩家设计的**轻量级、打卡式饲养记录**微信小程序。
+> 记录喂食、体重、垫材更换，按实际打卡日动态顺延下次提醒，告别"忘记喂食"。
 
 ---
 
-## 项目概述
+## 目录
 
-### 产品定位
-一款专为爬宠玩家设计的**轻量级、打卡式饲养记录工具**。
+- [产品概述](#产品概述)
+- [技术架构](#技术架构)
+- [目录结构](#目录结构)
+- [快速开始](#快速开始)
+- [后端部署](#后端部署)
+- [数据库设计](#数据库设计)
+- [REST API](#rest-api)
+- [核心业务逻辑](#核心业务逻辑)
+- [开发约定](#开发约定)
+- [常见问题](#常见问题)
+- [更新日志](#更新日志)
+
+---
+
+## 产品概述
 
 ### 核心价值
-- ✅ 解决玩家忘记喂食/换垫材时间的痛点
-- ✅ 动态顺延日程（实际打卡日 + 频率 = 下次计划）
-- ✅ 体重折线图可视化成长曲线
-- ✅ 科学饲养反馈和养成成就感
+
+- ✅ 解决玩家忘记喂食 / 换垫材时间的痛点
+- ✅ **动态顺延日程**：实际打卡日 + 频率 = 下次计划日，缺漏自动校正、不堆积
+- ✅ 体重折线图（Canvas 手绘）可视化成长曲线
+- ✅ 多宠物档案管理，按用户隔离
 
 ### 运行环境
-- 微信小程序（iOS/Android 双端微信）
-- 微信云开发（免服务器部署）
+
+- 微信小程序（iOS / Android 双端微信）
+- 自建 REST 后端（阿里云 ECS + 宝塔 + PHP + MySQL + Nginx）
 
 ---
 
 ## 技术架构
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    微信小程序客户端                    │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
-│  │  今日   │  │  爱宠   │  │  详情   │  │  我的   │ │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘ │
-└─────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────┐
-│                   微信云开发平台                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │  云数据库     │  │  云存储       │  │  云函数   │ │
-│  │  (MongoDB)   │  │  (文件存储)   │  │ (Node.js) │ │
-│  └──────────────┘  └──────────────┘  └───────────┘ │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    微信小程序客户端                        │
+│   今日待办 │ 爱宠列表 │ 宠物详情(图表) │ 添加 │ 体重 │ 我的  │
+│                  (WXML / WXSS / 原生 JS)                  │
+└───────────────────────────┬─────────────────────────────┘
+                            │  HTTPS + JWT
+                            │  (utils/api.js 统一封装)
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│            阿里云 ECS (宝塔面板管理)                       │
+│   Nginx  →  PHP REST API  →  MySQL (pet_reptile)         │
+│                  ↑                                        │
+│          wx.login code → jscode2session → openid → JWT    │
+│   /uploads/  ← 宠物头像等文件存储                          │
+└─────────────────────────────────────────────────────────┘
 ```
 
+> **历史说明**：本项目最初运行于微信云开发（云函数 + 云数据库 + 云存储），后迁移至自建后端。迁移设计见 `plans/` 目录与 `server/DEPLOY.md`。
+
 ### 技术栈
+
 | 层级 | 技术 | 说明 |
 |------|------|------|
-| 前端 | WXML/WXSS/JS | 微信小程序原生框架 |
-| 图表 | Canvas | 原生 Canvas 绘制体重折线图 |
-| 后端 | 微信云开发 | 免服务器部署 |
-| 数据库 | 云数据库 | 类 MongoDB NoSQL |
-| 存储 | 云存储 | 宠物头像等文件 |
-| 鉴权 | 云函数 | 获取用户 openid |
+| 前端 | WXML / WXSS / 原生 JS | 微信小程序原生框架，无 npm 构建步骤 |
+| 图表 | Canvas | 原生 Canvas 手绘体重折线图，无第三方库 |
+| 网络 | `utils/api.js` | HTTP 封装：自动 JWT、401 重登重试、文件上传 |
+| 缓存 | `utils/cache.js` | 基于本地存储的 TTL 缓存 |
+| 后端 | PHP（无框架） | 单入口 `index.php` + 正则路由表 |
+| 数据库 | MySQL `pet_reptile` | 5 张表，服务端按 JWT openid 做租户隔离 |
+| 鉴权 | 自签 JWT | HMAC-SHA256，服务端 30 天有效 |
+| 存储 | Nginx 静态目录 `/uploads/` | 宠物头像（HTTPS URL） |
 
 ---
 
@@ -72,470 +78,215 @@
 
 ```
 Pet reptile/
+├── app.js                  # 全局入口：ensureLogin()、日期工具
+├── app.json                # 页面路由、TabBar（今日/爱宠/我的）、导航色 #4A9C7B
+├── app.wxss                # 全局样式（CSS 变量、通用类）
 │
-├── app.js                    # 全局入口（云开发初始化）
-├── app.json                  # 全局配置（页面路由、TabBar）
-├── app.wxss                  # 全局样式（主题色、通用类）
-├── project.config.json       # 项目配置（IDE 用）
-├── sitemap.json              # 搜索索引配置
+├── pages/                  # 6 个页面，每个含 .wxml/.wxss/.js/.json
+│   ├── index/              #   今日待办（喂食/垫材动态提醒）
+│   ├── pets/               #   爱宠列表（10 分钟缓存）
+│   ├── pet-detail/         #   宠物详情 + Canvas 体重图
+│   ├── add-pet/            #   新建 / 编辑宠物
+│   ├── weight-record/      #   体重录入与历史
+│   └── mine/               #   个人中心
 │
-├── pages/                    # 页面目录
-│   ├── index/                # 首页（今日待办）
-│   │   ├── index.wxml
-│   │   ├── index.wxss
-│   │   ├── index.js
-│   │   └── index.json
-│   │
-│   ├── pets/                 # 宠物列表页
-│   │   ├── pets.wxml
-│   │   ├── pets.wxss
-│   │   ├── pets.js
-│   │   └── pets.json
-│   │
-│   ├── pet-detail/           # 宠物详情页（图表）
-│   │   ├── pet-detail.wxml
-│   │   ├── pet-detail.wxss
-│   │   ├── pet-detail.js
-│   │   └── pet-detail.json
-│   │
-│   ├── add-pet/              # 添加/编辑宠物
-│   │   ├── add-pet.wxml
-│   │   ├── add-pet.wxss
-│   │   ├── add-pet.js
-│   │   └── add-pet.json
-│   │
-│   ├── weight-record/        # 体重/打卡记录
-│   │   ├── weight-record.wxml
-│   │   ├── weight-record.wxss
-│   │   ├── weight-record.js
-│   │   └── weight-record.json
-│   │
-│   └── mine/                 # 我的页面
-│       ├── mine.wxml
-│       ├── mine.wxss
-│       ├── mine.js
-│       └── mine.json
+├── components/             # pet-card / feed-modal（预留空壳）
 │
-├── components/               # 自定义组件（预留）
-│   ├── pet-card/
-│   └── feed-modal/
+├── utils/
+│   ├── api.js              # 自建后端 HTTP 封装（BASE_URL 为部署开关）
+│   ├── cache.js            # TTL 本地缓存
+│   └── util.js             # 日期、校验、toast 等共享工具
 │
-├── cloudfunctions/           # 云函数目录
-│   └── getOpenid/            # 获取 openid
-│       ├── index.js
-│       ├── package.json
-│       └── config.json
+├── server/                 # 自建后端（部署到阿里云）
+│   ├── index.php           #   单入口控制器 + 路由表
+│   ├── config.php          #   从 .env 加载配置
+│   ├── .env.example        #   环境变量模板（复制为 .env 填实际值）
+│   ├── migrate.php         #   云开发 JSON 导出 → MySQL 灌库脚本
+│   ├── nginx-snippet.conf  #   Nginx 重写规则片段
+│   ├── DEPLOY.md           #   分步部署指南
+│   ├── lib/                #   db.php / auth.php / response.php
+│   └── routes/             #   auth / pets / feed / weight / substrate / upload / user
 │
-├── utils/                    # 工具函数
-│   └── util.js
-│
-└── assets/                   # 静态资源
-    └── images/               # 图片资源
-        ├── default-pet.png   # 默认宠物头像
-        ├── default-avatar.png # 默认用户头像
-        └── *.png             # TabBar 图标
+├── assets/                 # 图标与默认头像
+└── docs/                   # 维护文档
 ```
+
+> `databasejson/`（云开发数据导出）与 `server.zip` 含真实用户数据 / 构建产物，**已被 `.gitignore` 排除**，不进仓库。
+
+---
+
+## 快速开始
+
+### 1. 前端（小程序）
+
+1. 安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)（Stable Build），基础库 `3.15.1`。
+2. 导入本仓库目录，填入自己的小程序 AppID（或测试号）。
+3. 编辑 [`utils/api.js`](utils/api.js) 的 `BASE_URL`，指向你部署的后端域名：
+   ```js
+   const BASE_URL = 'https://api.yourdomain.com/api';
+   ```
+4. 在 [mp.weixin.qq.com](https://mp.weixin.qq.com) → 开发设置 → 服务器域名，把该域名加入
+   `request` / `uploadFile` / `downloadFile` 合法域名（须 HTTPS 且已 ICP 备案）。
+5. 编译预览即可。无构建步骤，DevTools 热重载。
+
+### 2. 后端
+
+见下方 [后端部署](#后端部署) 或 [`server/DEPLOY.md`](server/DEPLOY.md)。
+
+---
+
+## 后端部署
+
+完整分步说明见 [`server/DEPLOY.md`](server/DEPLOY.md)，概要：
+
+1. **准备**：阿里云 ECS + 宝塔，域名已建站、SSL 强制 HTTPS、MySQL 建库 `pet_reptile` 与 5 张表。
+2. **上传**：把 `server/` 内全部文件传到站点根目录（如 `/www/wwwroot/api.yourdomain.com/`），删掉宝塔默认 `index.html`。
+3. **配置**：复制 `.env.example` 为 `.env`，填入 `WX_APPID / WX_APPSECRET / JWT_SECRET / DB_* / UPLOAD_URL_PREFIX`，并把 `.env` 权限设为 `600`。
+   `JWT_SECRET` 用 `openssl rand -hex 32` 生成。
+4. **Nginx**：把 `nginx-snippet.conf` 内容插入站点 `server { }` 块。
+5. **（可选）数据迁移**：若从云开发迁移，上传导出 JSON，执行 `php migrate.php`，确认无误后删除 `migrate.php` 与迁移数据目录。
+6. **自测**：
+   ```bash
+   curl -i https://api.yourdomain.com/api/pets        # 期望 401
+   curl -i https://api.yourdomain.com/api/nonexistent # 期望 404
+   ```
+
+> ⚠️ `.env`、真实数据库密码、用户数据导出 **不要提交到仓库**。`.gitignore` 已覆盖 `*.env`、`databasejson/`、`*.zip`。
 
 ---
 
 ## 数据库设计
 
-### 1. 宠物档案表 (`pet_info`)
+MySQL 库 `pet_reptile`，仅经 REST API 访问（小程序不直连）。`_id` 为 `VARCHAR(32)` UUID 风格，以便保留云开发时期的原始 ID；`created_at` 由 MySQL `CURRENT_TIMESTAMP` 自动填充，客户端不发送。
 
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| `_id` | String | 宠物唯一 ID | 主键（自动生成） |
-| `user_openid` | String | 用户 openid | 关联具体用户 |
-| `name` | String | 宠物昵称 | 例如：小黑 |
-| `species` | String | 品种 | 例如：豹纹守宫 |
-| `avatar` | String | 头像文件 ID | 云存储 fileID |
-| `arrivalDate` | String | 到家日期 | YYYY-MM-DD |
-| `initialWeight` | Number | 初始体重 (g) | |
-| `feed_interval` | Number | 喂食频率 (天) | 例如：3 |
-| `sub_interval` | Number | 垫材更换频率 (天) | 例如：15 |
-| `next_feed_date` | String | 下次计划喂食日期 | 🌟首页判断核心 |
-| `next_sub_date` | String | 下次换垫材日期 | 🌟首页判断核心 |
-| `created_at` | Date | 创建时间 | 服务器时间 |
+| 表 | 用途 | 关键字段 |
+|---|---|---|
+| `pet_info` | 宠物档案 | `_id`(pk), `user_openid`, `name`, `species`, `avatar`(https), `feed_interval`, `sub_interval`, `next_feed_date`, `next_sub_date` |
+| `feed_logs` | 喂食打卡 | `_id`, `pet_id`, `feed_date`, `food_type`, `amount` |
+| `weight_logs` | 体重记录 | `_id`, `pet_id`, `weight`, `record_date` |
+| `substrate_logs` | 垫材更换 | `_id`, `pet_id`, `change_date`, `sub_type` |
+| `user_info` | 用户资料 | `openid`(pk), `nickname`, `avatarUrl` |
 
-### 2. 喂食记录表 (`feed_logs`)
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| `_id` | String | 记录唯一 ID | 主键 |
-| `pet_id` | String | 宠物 ID | 外键 |
-| `feed_date` | String | 实际打卡日期 | YYYY-MM-DD |
-| `food_type` | String | 食物种类 | 杜比亚/乳鼠等 |
-| `amount` | String | 喂食量/备注 | 选填 |
-| `created_at` | Date | 记录生成时间 | |
-
-### 3. 体重记录表 (`weight_logs`)
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| `_id` | String | 记录唯一 ID | 主键 |
-| `pet_id` | String | 宠物 ID | 外键 |
-| `weight` | Number | 体重数值 (g) | |
-| `record_date` | String | 测量日期 | YYYY-MM-DD |
-| `created_at` | Date | 记录录入时间 | |
-
-### 4. 垫材更换记录表 (`substrate_logs`)
-
-| 字段名 | 类型 | 说明 | 备注 |
-|--------|------|------|------|
-| `_id` | String | 记录唯一 ID | 主键 |
-| `pet_id` | String | 宠物 ID | 外键 |
-| `change_date` | String | 更换日期 | YYYY-MM-DD |
-| `sub_type` | String | 垫材种类 | 厨房纸/爬沙等 |
-| `created_at` | Date | 记录生成时间 | |
+**租户隔离**：服务端从 JWT 的 `openid` claim 推导身份，写入时强制盖章——绝不信任客户端传来的 `user_openid`。
 
 ---
 
-## 核心功能说明
+## REST API
 
-### 3.1 动态喂食打卡系统 ⚠️
+所有接口前缀 `/api`，除登录外均需 `Authorization: Bearer <token>`。列表接口返回数组，单项接口返回对象。
 
-#### 核心逻辑
-```
-下次计划日期 = 上一次实际打卡日期 + 喂食频率 (N 天)
-```
-
-#### 场景示例
-假设设定**每 3 天喂一次**：
-- 原计划 3 号喂 → 用户忘记
-- 实际 4 号才打卡 → 系统自动计算 `4 + 3 = 7`
-- 下次计划更新为 **7 号**（而非 6 号）
-
-#### 代码实现
-```javascript
-// pages/index/index.js - 确认打卡
-async confirmFeed() {
-  const { currentPetId, feedDate } = this.data;
-  
-  // 1. 添加喂食记录
-  await this.addFeedRecord(currentPetId, feedDate, foodType, amount);
-  
-  // 2. 获取宠物信息
-  const pet = await this.getPet(currentPetId);
-  
-  // 3. 计算下次日期（核心逻辑）
-  const nextDate = app.dateAdd(feedDate, pet.feed_interval);
-  
-  // 4. 更新宠物档案
-  await this.updatePet(currentPetId, { next_feed_date: nextDate });
-}
-```
-
-### 3.2 首页状态判断
-
-| 状态 | 条件 | 显示文案 | 样式 |
-|------|------|----------|------|
-| 正常待办 | `next_date === today` | "今天需要喂食啦" | 橙色警告 |
-| 逾期提醒 | `next_date < today` | "已逾期 X 天未喂食" | 红色警示 |
-| 清闲状态 | `next_date > today` | "距离下次还有 X 天" | 绿色正常 |
-
-### 3.3 体重折线图
-
-#### 技术实现
-- 使用原生 `Canvas` 绘制（无需第三方库）
-- 最多显示最近 10 条记录
-- 平滑曲线 + 渐变填充
-
-#### 绘制流程
-```
-1. 获取 Canvas 节点 → 2. 设置 DPR 缩放 → 3. 计算坐标映射
-→ 4. 绘制网格线 → 5. 绘制折线 → 6. 绘制渐变填充
-→ 7. 绘制数据点 → 8. 绘制坐标标签
-```
-
-### 3.4 防误触机制
-
-#### 撤销功能（待实现）
-- 打卡后 **10 分钟内** 可撤销
-- 或 **当天内** 可删除
-- 删除后日程状态回滚
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/auth/login` | `wx.login` code 换 JWT（唯一免鉴权接口） |
+| GET / POST | `/user` | 获取 / 更新当前用户资料 |
+| GET / POST | `/pets` | 宠物列表 / 新建 |
+| GET / PUT / DELETE | `/pets/:id` | 宠物详情 / 更新 / 删除 |
+| GET / POST | `/feed-logs` | 喂食记录列表 / 新建 |
+| GET | `/feed-logs/count` | 喂食次数统计 |
+| GET / DELETE | `/feed-logs/:id` | 单条 / 删除 |
+| GET / POST | `/weight-logs` | 体重记录列表 / 新建 |
+| GET / DELETE | `/weight-logs/:id` | 单条 / 删除 |
+| GET / POST | `/substrate-logs` | 垫材记录列表 / 新建 |
+| GET | `/substrate-logs/count` | 垫材更换统计 |
+| GET / DELETE | `/substrate-logs/:id` | 单条 / 删除 |
+| POST | `/uploads` | 文件上传（头像），返回 https URL |
 
 ---
 
-## 开发指南
+## 核心业务逻辑
 
-### 环境准备
+### 动态顺延日程（核心）
 
-1. **安装微信开发者工具**
-   - 下载地址：https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html
-   - 选择稳定版（Stable Build）
-
-2. **导入项目**
-   - 打开开发者工具
-   - 导入项目 → 选择 `D:\Development\wechatapp\Pet reptile`
-   - 填入自己的 AppID（或使用测试号）
-
-3. **开通云开发**
-   - 工具栏 → 云开发 → 开通
-   - 创建环境（免费版即可）
-   - 复制环境 ID 到 `app.js`
-
-### 配置修改
-
-#### app.js - 云环境 ID
-```javascript
-wx.cloud.init({
-  env: 'your-env-id',  // 替换为你的云环境 ID
-  traceUser: true
-});
+```
+下次计划日期 = 实际打卡日期 + 频率天数
 ```
 
-#### project.config.json - AppID
-```json
-{
-  "appid": "your-appid",  // 替换为你的小程序 AppID
-  "projectname": "pet-reptile"
-}
+用户打卡时，下次日期从**实际打卡日**而非原计划日计算——因此缺漏的天数会自动校正，不会累积待办。
+
+```js
+// 打卡确认后
+const nextDate = app.dateAdd(feedDate, pet.feed_interval);
+await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 ```
 
-### 云函数部署
+### 首页状态判断
 
-1. 右键 `cloudfunctions/getOpenid` 目录
-2. 选择 **上传并部署：云端安装依赖**
-3. 等待部署完成（状态变为 ✔）
+| 条件 | 文案 | 样式 |
+|------|------|------|
+| `next_date === today` | 今天需要喂食啦 | 🟠 橙色警告 |
+| `next_date < today` | 已逾期 X 天未喂食 | 🔴 红色警示 |
+| `next_date > today` | 距离下次还有 X 天 | 🟢 绿色正常 |
 
-### 数据库初始化
+### 体重折线图
 
-在云开发控制台创建以下集合：
-- `pet_info`
-- `feed_logs`
-- `weight_logs`
-- `substrate_logs`
-
-#### 设置索引
-```javascript
-// pet_info
-{ user_openid: 1 }
-{ next_feed_date: 1 }
-{ next_sub_date: 1 }
-
-// feed_logs
-{ pet_id: 1, feed_date: -1 }
-
-// weight_logs
-{ pet_id: 1, record_date: -1 }
-
-// substrate_logs
-{ pet_id: 1, change_date: -1 }
-```
-
-### 调试技巧
-
-#### 1. 模拟数据（开发测试）
-```javascript
-// pages/index/index.js - getPets()
-if (!wx.cloud) {
-  // 模拟数据
-  resolve({
-    data: [
-      {
-        _id: 'test1',
-        name: '测试宠物',
-        species: '豹纹守宫',
-        next_feed_date: '2026-03-26',
-        next_sub_date: '2026-04-01'
-      }
-    ]
-  });
-  return;
-}
-```
-
-#### 2. 清除缓存
-```
-工具栏 → 清缓存 → 清除全部缓存
-```
-
-#### 3. 真机预览
-```
-工具栏 → 预览 → 扫码在手机上查看
-```
+原生 Canvas 手绘，最多展示最近 10 条记录，含网格、平滑折线、渐变填充与坐标标签，无第三方图表库。
 
 ---
 
-## 部署流程
+## 开发约定
 
-### 1. 代码上传
-1. 微信开发者工具 → 右上角 **上传**
-2. 填写版本号和备注
-3. 上传成功后在 **版本管理** 查看
+- **API 访问**：一律走 [`utils/api.js`](utils/api.js)（`api.get/post/put/del/uploadFile`），不直接调 `wx.request`。封装已处理鉴权、401 重登重试与 base URL。
+- **日期格式**：统一 `YYYY-MM-DD` 字符串，用 `app.formatDate()` / `app.dateDiff()` / `app.dateAdd()`。
+- **OpenID 持久**：openid 永久稳定，仅 token 会过期（服务端 30 天）。登出只清 token，**不清 `auth_openid`**（详见 `OPENID_PERSISTENT.md`）。
+- **缓存**：读多写少数据用 `utils/cache.js`，写 / 删后及时失效缓存。
+- **返回值防御**：列表接口期望数组，但网络异常会返回 `undefined`，页面仍应 `Array.isArray()` 检查。
+- **全局枚举**：`app.globalData.foodTypeOptions` / `substrateTypeOptions` 为喂食 / 垫材类型的唯一来源，勿在各页重复定义。
 
-### 2. 提交审核
-1. 版本管理 → 开发版本 → 提交审核
-2. 填写审核信息：
-   - 功能介绍：爬宠饲养记录工具
-   - 测试账号：（如有需要）
-   - 补充说明：无社交/支付功能
+### 新增页面
 
-### 3. 发布上线
-1. 审核通过后 → 版本管理 → 生产版本
-2. 点击 **发布**
-3. 用户端即可搜索到小程序
-
-### 4. 备案与认证
-
-#### 小程序备案
-- 个人主体：免费，需身份证
-- 时间：3-7 个工作日
-- 流程：基本信息 → 主营类目 → 腾讯审核 → 管局备案
-
-#### 小程序认证
-- 个人：30 元/年
-- 企业：300 元/年
-- 认证后才可分享和搜索
+1. 在 `pages/` 下建目录，含 `.wxml` / `.wxss` / `.js` / `.json` 四件套。
+2. 在 `app.json` 的 `pages` 数组注册路径。
+3. 遵循 `Page({ data, onLoad, onShow })` 生命周期。
 
 ---
 
 ## 常见问题
 
-### Q1: 云开发初始化失败
-**A:** 检查以下几点：
-1. 云环境 ID 是否正确
-2. 是否已开通云开发服务
-3. 云函数是否已部署
+**Q：接口全部 401？**
+确认 `BASE_URL` 正确、`wx.login` 能拿到 code、服务端 `WX_APPID/WX_APPSECRET` 配对、`JWT_SECRET` 已设置。
 
-### Q2: 获取 openid 失败
-**A:** 
-1. 确认 `getOpenid` 云函数已部署
-2. 检查云函数权限配置
-3. 查看云函数日志排查错误
+**Q：头像上传后不显示？**
+检查 `UPLOAD_URL_PREFIX` 指向 `/uploads/` 且域名在 `downloadFile` 合法域名白名单内。
 
-### Q3: Canvas 图表不显示
-**A:**
-1. 检查 `canvas-id` 是否匹配
-2. 确保在 `onReady` 生命周期获取节点
-3. 真机调试时注意 DPR 缩放
+**Q：日期显示 `NaN-NaN-NaN`？**
+确保传给 `dateAdd` 的是合法 `YYYY-MM-DD` 字符串与数字频率；旧脏数据需在数据库修正 `next_feed_date`。
 
-### Q4: 日期计算偏差
-**A:**
-1. 统一使用 `YYYY-MM-DD` 字符串格式
-2. 避免时区问题（服务器时间 vs 本地时间）
-3. 使用工具函数 `app.formatDate()`
-
-### Q5: 数据查询超过 20 条限制
-**A:** 云数据库单次查询最多返回 20 条，需分页：
-```javascript
-const db = wx.cloud.database();
-const MAX_LIMIT = 20;
-
-// 分批获取
-const batch1 = await db.collection('feed_logs')
-  .skip(0).limit(MAX_LIMIT).get();
-const batch2 = await db.collection('feed_logs')
-  .skip(MAX_LIMIT).limit(MAX_LIMIT).get();
-```
-
-### Q6: 打卡时提示 "喂食频率设置无效"
-**A:** 检查以下几点：
-1. 宠物档案是否正确设置了 `feed_interval` 字段
-2. 如果是老数据，可能在创建时未设置该字段
-3. 解决方案：编辑宠物档案，重新保存频率设置
-4. 或者在云开发控制台手动添加 `feed_interval` 字段（数字类型）
-
-### Q7: 显示 "NaN-NaN-NaN 天" 或日期异常
-**A:** 
-1. 此问题已在 v1.0.7 修复
-2. 如果是旧数据导致，在云开发控制台检查 `next_feed_date` 字段
-3. 删除异常的日期字段，重新打卡生成正确日期
-4. 建议升级到最新版本
+**Q：服务器报 500？**
+看宝塔「网站日志」。错误以 JSON 返回不暴露堆栈，详细信息在 `error_log`。
 
 ---
 
 ## 更新日志
 
-### v1.0.7 (2026-04-06)
-- ✅ 修复日期计算 NaN 问题（`dateAdd` 函数参数验证）
-- ✅ 修复首页打卡无响应问题（`getPet` 返回值结构修复）
-- ✅ 添加 `feed_interval` 和 `sub_interval` 有效性验证
-- ✅ 增强待办列表类型兼容性（String 比较）
-- ✅ 添加详细调试日志（便于问题排查）
-- ✅ WXML 显示防御处理（避免显示 "NaN-NaN-NaN 天"）
+### v2.0.0 — 迁移至自建后端
+- 🚀 从微信云开发迁移到阿里云自建 REST 后端（PHP + MySQL + Nginx）
+- ➕ 新增 `server/`（单入口路由、JWT 鉴权、文件上传）、`utils/api.js` HTTP 封装
+- 🗑️ 移除 `cloudfunctions/`（getOpenid / getPhoneNumber / quickstartFunctions）
+- 🔁 各页面数据访问改为统一走 `utils/api.js`
 
-#### 🔧 Bug 修复详情
+### v1.0.7（2026-04-06）
+- 修复 `dateAdd` 参数未校验导致的 `NaN` 日期
+- 修复首页打卡无响应（`getPet` 返回结构）
+- 新增 `feed_interval` / `sub_interval` 有效性校验
 
-**问题 1: 逾期后打卡显示 "NaN-NaN-NaN 天"**
-- **原因**: `dateAdd` 函数未验证参数，当 `days` 为 `undefined/null` 时返回 `NaN`
-- **修复**: 添加参数验证，无效时返回当前日期或原日期
-- **文件**: `app.js`, `pages/index/index.js`, `pages/index/index.wxml`
+### v1.0.x（2026-03）
+- 混合缓存方案（本地缓存 + 关键操作刷新，`utils/cache.js`）
+- 记录删除与二次确认、删除后日程回滚
+- 日程显示逻辑优化（仅打卡后显示下次提醒）
 
-**问题 2: 首页打卡按钮点击后提示 "喂食频率设置无效"**
-- **原因**: `getPet` 方法返回整个云数据库响应对象，而非 `data` 字段
-- **修复**: `getPet` 方法改为返回 `res.data`，正确获取宠物字段
-- **文件**: `pages/index/index.js`
+### v1.0.0（2026-03-26）
+- 初始版本：宠物档案增删改查、动态喂食打卡、垫材提醒、体重折线图、首页待办
 
----
-
-### v1.0.6 (2026-03-27 21:12)
-- ✅ 修复删除后缓存刷新问题
-- ✅ 删除记录后重新计算下次日期
-- ✅ 删除后强制刷新前一页数据
-- ✅ 首页/pets 页 onShow 强制刷新
-- ✅ 删除所有记录后清空下次日期
-
-### v1.0.5 (2026-03-27 20:54)
-- ✅ 实现混合缓存方案（本地缓存 + 关键操作刷新）
-- ✅ 创建统一缓存管理工具（utils/cache.js）
-- ✅ 宠物列表缓存 10 分钟
-- ✅ 日程数据缓存 5 分钟
-- ✅ 体重记录缓存 30 分钟
-- ✅ 打卡/删除后自动清除相关缓存
-- ✅ 预计节省 75% 数据库读取次数
-
-### v1.0.4 (2026-03-27 20:44)
-- ✅ 当前体重显示优化（无记录时显示初始体重）
-- ✅ 新建宠物完全不设置下次日期
-- ✅ 只有打卡后才设置并显示对应日程
-- ✅ 体重图表初始值正确显示
-
-### v1.0.3 (2026-03-27 20:39)
-- ✅ 优化日程显示逻辑
-- ✅ 新建宠物不显示下次日程（未设置）
-- ✅ 打卡后才显示对应提醒（喂食/垫材）
-- ✅ "下次提醒"区域动态显示条目
-- ✅ 首页待办只在打卡后显示
-
-### v1.0.2 (2026-03-27 20:30)
-- ✅ 优化下次日期计算逻辑
-- ✅ 编辑宠物档案时不重置下次日期
-- ✅ 只有新建和打卡时才计算下次日期
-
-### v1.0.1 (2026-03-27)
-- ✅ 新增删除功能（喂食/垫材/体重记录）
-- ✅ 历史记录支持删除操作
-- ✅ 删除前二次确认保护
-- ✅ 删除后自动刷新数据
-- 📁 建立文档管理规范（`docs/` 文件夹）
-
-### v1.0.0 (2026-03-26)
-- ✅ 初始版本发布
-- ✅ 宠物档案管理（增删改查）
-- ✅ 动态喂食打卡系统
-- ✅ 垫材更换提醒
-- ✅ 体重记录与折线图
-- ✅ 首页待办事项
-- ✅ 数据导出功能
-
-### 待开发功能
-- [ ] 打卡撤销功能（10 分钟内）
+### 待开发
+- [ ] 打卡撤销（10 分钟内）
 - [ ] 多宠物批量打卡
-- [ ] 饲养日记/相册
-- [ ] 温度/湿度记录
-- [ ] 数据报表（月/周统计）
-- [ ] 提醒通知（订阅消息）
-- [ ] 社区分享功能
+- [ ] 温湿度记录
+- [ ] 数据报表（周 / 月统计）
+- [ ] 订阅消息提醒
 
 ---
 
-## 📞 技术支持
+## 技术支持
 
-- 微信开放文档：https://developers.weixin.qq.com/miniprogram/dev/
-- 云开发文档：https://developers.weixin.qq.com/miniprogram/dev/wxcloud/basis/getting-started.html
-- 问题反馈：项目 Issues
-
----
-
-_最后更新：2026-03-26 22:50_
+- [微信小程序开发文档](https://developers.weixin.qq.com/miniprogram/dev/)
+- 问题反馈：本仓库 Issues
