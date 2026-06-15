@@ -258,6 +258,10 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ## 更新日志
 
+### v2.1.0 — 自定义昵称
+- ✨ "我的"页支持点击昵称修改，实时同步到后端 `user_info.nickname`
+- 🧹 清理无用的旧昵称弹层代码（`onSaveUserInfo` / `tempNickname` / `showLoginModal`）
+
 ### v2.0.0 — 迁移至自建后端
 - 🚀 从微信云开发迁移到阿里云自建 REST 后端（PHP + MySQL + Nginx）
 - ➕ 新增 `server/`（单入口路由、JWT 鉴权、文件上传）、`utils/api.js` HTTP 封装
