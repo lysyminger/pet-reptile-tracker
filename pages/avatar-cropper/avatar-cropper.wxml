@@ -1,0 +1,25 @@
+<!--pages/avatar-cropper/avatar-cropper.wxml-->
+<view class="cropper">
+  <!-- 图片画布：手势拖动 / 缩放 -->
+  <view class="stage" style="width:{{stageW}}px;height:{{stageH}}px;"
+        bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
+    <canvas type="2d" id="editCanvas" class="edit-canvas"
+            style="width:{{stageW}}px;height:{{stageH}}px;"></canvas>
+
+    <!-- 圆形裁剪框遮罩：环形阴影压暗圆外区域 -->
+    <view class="mask-circle"
+          style="width:{{cropD}}px;height:{{cropD}}px;left:{{cropLeft}}px;top:{{cropTop}}px;"></view>
+  </view>
+
+  <view class="tip">拖动 / 双指缩放，选取头像区域</view>
+
+  <!-- 底部操作栏 -->
+  <view class="actions">
+    <view class="btn cancel" bindtap="onCancel">取消</view>
+    <view class="btn confirm" bindtap="onConfirm">确定</view>
+  </view>
+
+  <!-- 离屏输出画布（屏幕外，不可见） -->
+  <canvas type="2d" id="outCanvas" class="out-canvas"
+          style="width:{{outSize}}px;height:{{outSize}}px;"></canvas>
+</view>

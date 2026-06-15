@@ -1,0 +1,79 @@
+/* pages/avatar-cropper/avatar-cropper.wxss */
+page {
+  background-color: #000;
+}
+
+.cropper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #000;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+  margin-top: 60rpx;
+}
+
+.edit-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+/* 圆形裁剪框：用超大 box-shadow 把圆外区域压暗，圆内透出原图 */
+.mask-circle {
+  position: absolute;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+
+.tip {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 26rpx;
+  margin-top: 48rpx;
+}
+
+.actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  padding: 32rpx 48rpx calc(32rpx + env(safe-area-inset-bottom));
+  justify-content: space-between;
+}
+
+.btn {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+}
+
+.cancel {
+  color: #fff;
+  margin-right: 24rpx;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.confirm {
+  color: #fff;
+  margin-left: 24rpx;
+  background-color: #4A9C7B;
+}
+
+/* 输出画布移出可视区域，仅用于导出 */
+.out-canvas {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+}

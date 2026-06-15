@@ -238,7 +238,7 @@ Page({
   onAbout() {
     wx.showModal({
       title: '关于爬宠饲养记',
-      content: 'Version 2.1.0\n\n专为爬宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 科学饲养反馈',
+      content: 'Version 2.2.0\n\n专为爬宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 科学饲养反馈',
       showCancel: false
     });
   }
