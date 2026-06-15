@@ -258,9 +258,11 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ## 更新日志
 
-### v2.2.0 — 头像圆形裁剪
+### v2.2.0 — 头像圆形裁剪 & 养宠天数
 - 🖼️ 上传头像新增裁剪页（`pages/avatar-cropper/`）：Canvas 2D + 自处理拖动 / 双指缩放，圆形裁剪框，导出圆形 PNG
 - 🔁 `add-pet` 选图后经裁剪页 `eventChannel` 回传再上传
+- 🏠 「爱宠」列表每只显示「到家第 X 天」（基于 `arrivalDate`，到家当天记为第 1 天）
+- 📊 「我的」页「喂养天数」改为「养宠天数」= 最早到家日期至今（多宠物时语义更清晰）
 
 ### v2.1.0 — 自定义昵称
 - ✨ "我的"页支持点击昵称修改，实时同步到后端 `user_info.nickname`

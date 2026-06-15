@@ -28,7 +28,7 @@
       </view>
       <view class="stat-item">
         <text class="stat-number">{{stats.daysCount}}</text>
-        <text class="stat-label">喂养天数</text>
+        <text class="stat-label">养宠天数</text>
       </view>
     </view>
   </view>

@@ -86,6 +86,12 @@
   margin-top: 8rpx;
 }
 
+.pet-item-days {
+  font-size: 22rpx;
+  color: var(--text-hint);
+  margin-top: 6rpx;
+}
+
 .pet-item-arrow {
   font-size: 40rpx;
   color: var(--text-hint);
