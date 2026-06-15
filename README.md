@@ -258,6 +258,10 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ## 更新日志
 
+### v2.2.0 — 头像圆形裁剪
+- 🖼️ 上传头像新增裁剪页（`pages/avatar-cropper/`）：Canvas 2D + 自处理拖动 / 双指缩放，圆形裁剪框，导出圆形 PNG
+- 🔁 `add-pet` 选图后经裁剪页 `eventChannel` 回传再上传
+
 ### v2.1.0 — 自定义昵称
 - ✨ "我的"页支持点击昵称修改，实时同步到后端 `user_info.nickname`
 - 🔔 新增版本更新提示弹窗（`utils/whatsNew.js`，每个版本仅弹一次，发版改版本号即自动再弹）

@@ -49,16 +49,26 @@ Page({
     }
   },
 
-  // 选择头像
+  // 选择头像 → 进入裁剪页 → 回传裁剪结果后上传
   chooseAvatar() {
     wx.chooseImage({
       count: 1,
-      sizeType: ['compressed'],
+      sizeType: ['original', 'compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
         const tempFilePath = res.tempFilePaths[0];
-        this.setData({ avatarUrl: tempFilePath });
-        this.uploadAvatar(tempFilePath);
+        wx.navigateTo({
+          url: '/pages/avatar-cropper/avatar-cropper?src=' + encodeURIComponent(tempFilePath),
+          events: {
+            // 裁剪页确定后回传圆形头像本地路径
+            cropped: (data) => {
+              if (data && data.path) {
+                this.setData({ avatarUrl: data.path });
+                this.uploadAvatar(data.path);
+              }
+            }
+          }
+        });
       }
     });
   },
