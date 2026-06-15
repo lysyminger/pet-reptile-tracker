@@ -19,12 +19,24 @@
 .user-info {
   display: flex;
   flex-direction: column;
+  border-radius: 12rpx;
+}
+
+.user-info-hover {
+  opacity: 0.6;
 }
 
 .user-nickname {
   font-size: 32rpx;
   font-weight: bold;
   color: var(--text-primary);
+}
+
+.edit-hint {
+  font-size: 22rpx;
+  font-weight: normal;
+  color: var(--text-hint);
+  margin-left: 16rpx;
 }
 
 .user-id {

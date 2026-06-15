@@ -57,9 +57,31 @@ MySQL database `pet_reptile`, accessed via the REST API (never directly from the
 | `utils/cache.js` | TTL-based local storage cache (pets: 10min, schedule: 5min, weight: 30min, history: 15min) |
 | `utils/util.js` | Shared utilities: date helpers, validation, toast wrappers |
 
-### Backend (separate repo / server)
+### Backend (`server/`, deployed to Alibaba Cloud)
 
-The mini program talks to a small PHP service on Alibaba Cloud ECS (managed via 宝塔/BT panel). See [plans/2h2g-wordpress-velvety-prism.md](C:/Users/30296/.claude/plans/2h2g-wordpress-velvety-prism.md) for the API surface, schema, and deployment steps. Auth is JWT signed server-side from `wx.login` code → `jscode2session` → `openid`.
+The PHP backend lives in [`server/`](server/) in this repo and is deployed to Alibaba Cloud ECS (managed via 宝塔/BT panel). It is framework-less, hand-rolled PHP (no Composer, no dependencies):
+
+- **`server/index.php`** — single front controller. All `/api/*` requests hit it; a flat `$routes` table `[METHOD, regex, file, handler]` dispatches to `routes/*.php`. `/auth/login` is the **only** unauthenticated endpoint — every other route calls `require_auth()` first, which sets `$GLOBALS['openid']`.
+- **`server/config.php`** — parses `server/.env` (no dotenv lib) into an `env()` helper; installs JSON-only error/exception handlers so 500s never leak stack traces.
+- **`server/lib/`** — `db.php` (singleton PDO over MySQL, `new_id()` for 32-hex UUIDs), `auth.php` (HS256 JWT sign/verify + `jscode2session`), `response.php` (`json_ok`/`json_error`, `request_body()`, and **`assert_pet_owned($petId, $openid)`** — the per-log ownership guard).
+- **`server/routes/`** — one file per resource (pets, feed, weight, substrate, user, upload, auth).
+- **`server/.env.example`** — config template; copy to `server/.env` on the server (never committed — see `.gitignore`).
+
+**Auth flow**: `wx.login` code → `POST /auth/login` → `jscode2session` → `openid` → JWT signed with `JWT_SECRET` (HS256, server-issued, 30-day exp). The client stores the token; the server re-derives `openid` from the JWT on every request.
+
+**Tenant isolation is two-layer**: writes stamp `openid` from the JWT (never client input); reads/writes of `*_logs` additionally call `assert_pet_owned()` to confirm the `pet_id` belongs to the caller (404 if missing, 403 if another user's).
+
+Full deployment steps are in [`server/DEPLOY.md`](server/DEPLOY.md). Historical migration design: [plans/2h2g-wordpress-velvety-prism.md](C:/Users/30296/.claude/plans/2h2g-wordpress-velvety-prism.md) (outside repo).
+
+#### Backend commands (run on the server, not locally)
+
+There is no build/test/lint step — PHP runs under Nginx + PHP-FPM. The only script is the one-shot data migration:
+
+```bash
+php migrate.php   # imports databasejson/*.json (WeChat Cloud exports) into MySQL; delete after use
+```
+
+`databasejson/` (real user-data exports) and `server.zip` are git-ignored and must not be committed to this public repo.
 
 ### Components (`components/`)
 

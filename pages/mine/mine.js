@@ -13,9 +13,7 @@ Page({
   data: {
     userInfo: {},
     openid: '',
-    tempNickname: '',
     hasUserInfo: false,
-    showLoginModal: false,
     stats: {
       petsCount: 0,
       feedCount: 0,
@@ -71,32 +69,49 @@ Page({
     }
   },
 
-  // 保存用户信息（保留供后续使用）
-  async onSaveUserInfo() {
-    const { tempNickname } = this.data;
-
-    if (!tempNickname || tempNickname.trim() === '') {
-      wx.showToast({ title: '请输入昵称', icon: 'none' });
-      return;
-    }
+  // 点击昵称 → 弹出输入框修改
+  onEditNickname() {
     if (!app.globalData.openid) {
       wx.showToast({ title: '登录信息丢失，请重试', icon: 'none' });
       return;
     }
+    const current = this.data.userInfo.nickname || '';
+    wx.showModal({
+      title: '修改昵称',
+      editable: true,
+      placeholderText: '请输入新昵称',
+      content: current,
+      success: (res) => {
+        if (!res.confirm) return;
+        const nickname = (res.content || '').trim();
+        if (!nickname) {
+          wx.showToast({ title: '昵称不能为空', icon: 'none' });
+          return;
+        }
+        if (nickname.length > 20) {
+          wx.showToast({ title: '昵称最多 20 个字', icon: 'none' });
+          return;
+        }
+        if (nickname === current) return; // 没改，跳过请求
+        this.saveNickname(nickname);
+      }
+    });
+  },
 
+  // 同步昵称到后端
+  async saveNickname(nickname) {
     wx.showLoading({ title: '保存中...' });
     try {
-      const saved = await api.post('/user', { nickname: tempNickname.trim() });
+      const saved = await api.post('/user', { nickname });
       this.setData({
-        userInfo: saved || { nickname: tempNickname.trim() },
-        hasUserInfo: true,
-        showLoginModal: false
+        userInfo: saved || Object.assign({}, this.data.userInfo, { nickname }),
+        hasUserInfo: true
       });
       wx.hideLoading();
-      wx.showToast({ title: '保存成功', icon: 'success' });
+      wx.showToast({ title: '修改成功', icon: 'success' });
     } catch (err) {
       wx.hideLoading();
-      console.error('保存用户信息失败:', err);
+      console.error('修改昵称失败:', err);
       wx.showToast({ title: '保存失败', icon: 'none' });
     }
   },
@@ -223,7 +238,7 @@ Page({
   onAbout() {
     wx.showModal({
       title: '关于爬宠饲养记',
-      content: 'Version 1.0.0\n\n专为爬宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 科学饲养反馈',
+      content: 'Version 2.1.0\n\n专为爬宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 科学饲养反馈',
       showCancel: false
     });
   }
