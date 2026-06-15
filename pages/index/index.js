@@ -2,6 +2,7 @@
 const app = getApp();
 const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
+const whatsNew = require('../../utils/whatsNew.js');
 
 Page({
   data: {
@@ -32,6 +33,7 @@ Page({
     this.initDate();
     this.loadFoodOptions();
     this.loadSubstrateOptions();
+    whatsNew.maybeShow(); // 版本更新提示（每个版本只弹一次）
   },
 
   onShow() {

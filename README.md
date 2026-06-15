@@ -260,6 +260,7 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ### v2.1.0 — 自定义昵称
 - ✨ "我的"页支持点击昵称修改，实时同步到后端 `user_info.nickname`
+- 🔔 新增版本更新提示弹窗（`utils/whatsNew.js`，每个版本仅弹一次，发版改版本号即自动再弹）
 - 🧹 清理无用的旧昵称弹层代码（`onSaveUserInfo` / `tempNickname` / `showLoginModal`）
 
 ### v2.0.0 — 迁移至自建后端
