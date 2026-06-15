@@ -2,11 +2,12 @@
 const app = getApp();
 const api = require('../../utils/api.js');
 
-// iOS 兼容：MySQL DATETIME "2026-04-07 17:05:10" → ISO "2026-04-07T17:05:10"
-function parseServerDate(s) {
+// 取 "YYYY-MM-DD" 或 "YYYY-MM-DD HH:MM:SS" 中的年月日，构造本地零点（避免时区差一天）
+function toLocalDay(s) {
   if (!s) return null;
-  const d = new Date(String(s).replace(' ', 'T'));
-  return isNaN(d.getTime()) ? null : d;
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
 Page({
@@ -138,15 +139,18 @@ Page({
         }
       }
 
-      // 喂养天数：从最早 created_at 算到今天
+      // 养宠天数：从最早的「到家日期」算到今天（到家当天记为第 1 天）
+      // 某只宠物没填到家日期则回退用它的 created_at
       let daysCount = 0;
       if (petsArr.length > 0) {
-        const petsWithDate = petsArr
-          .map(p => ({ ...p, _parsedDate: parseServerDate(p.created_at) }))
-          .filter(p => p._parsedDate);
-        if (petsWithDate.length > 0) {
-          const sorted = petsWithDate.sort((a, b) => a._parsedDate - b._parsedDate);
-          daysCount = Math.ceil((new Date() - sorted[0]._parsedDate) / (1000 * 60 * 60 * 24));
+        const days = petsArr
+          .map(p => toLocalDay(p.arrivalDate) || toLocalDay(p.created_at))
+          .filter(Boolean);
+        if (days.length > 0) {
+          const earliest = days.reduce((a, b) => (a < b ? a : b));
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          daysCount = Math.max(0, Math.round((today - earliest) / (1000 * 60 * 60 * 24)) + 1);
         }
       }
 

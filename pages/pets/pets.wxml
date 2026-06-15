@@ -20,6 +20,7 @@
         <view class="pet-item-info flex-1">
           <view class="pet-item-name">{{item.name}}</view>
           <view class="pet-item-species">{{item.species}}</view>
+          <view class="pet-item-days" wx:if="{{item.arrivalDays}}">🏠 到家第 {{item.arrivalDays}} 天</view>
         </view>
         <view class="pet-item-arrow">›</view>
       </view>
