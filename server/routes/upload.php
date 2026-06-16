@@ -25,14 +25,18 @@ function upload_file(): void {
 
     $url = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $filename;
 
-    // 内容安全：把刚上传的图片提交微信异步检测（结果 30 分钟内推送到 /wx/callback）。
-    // 异步性质决定了图片会先展示，若推送结果为 risky 再由回调清除。检测提交失败不阻断上传。
+    // ============================================================
+    // 【内容安全 · 图片检测入口】
+    // 所有用户上传的图片（头像等 UGC）都经过此处，统一提交微信
+    // media_check_async 异步检测。异步特性决定图片会先展示，结果由
+    // /wx/callback 接收，若 risky 再由回调清除。提交失败不阻断上传。
+    // ============================================================
     submit_media_check($url, $GLOBALS['openid'] ?? '');
 
     json_ok(['url' => $url]);
 }
 
-// 提交图片内容安全检测，并把 trace_id 记入 media_check 表供回调匹配
+// 提交图片内容安全检测（微信 media_check_async），并把 trace_id 记入 media_check 表供回调匹配
 function submit_media_check(string $url, string $openid): void {
     if ($openid === '') return;
     require_once __DIR__ . '/../lib/wxapi.php';
