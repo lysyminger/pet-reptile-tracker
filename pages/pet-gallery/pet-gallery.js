@@ -28,6 +28,7 @@ function formatDateLabel(date) {
 
 Page({
   data: {
+    tabAnim: '',
     activePetId: '',          // '' = 全部
     petTabs: [],              // [{_id, name, avatar}]，含「全部」
     timeline: [],             // [{date,label,items:[{_id,url,thumb,localThumb,pet_name}]}]
@@ -46,6 +47,13 @@ Page({
   onLoad(options) {
     const today = app.formatDate(new Date());
     this.setData({ today, uploadDate: today, activePetId: options.id || '' });
+  },
+
+  onShow() {
+    // tab 切入淡入动画
+    this.setData({ tabAnim: '' });
+    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
+    // 刷新（相册内容会变，进入时拉一次）
     this.loadPets().then(() => this.loadPhotos());
   },
 

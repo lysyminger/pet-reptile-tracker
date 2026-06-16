@@ -1,5 +1,5 @@
 <!--pages/mine/mine.wxml - 我的页面-->
-<view class="container">
+<view class="container {{tabAnim}}">
   <!-- 用户信息卡片 -->
   <view class="user-card card">
     <view class="user-header">

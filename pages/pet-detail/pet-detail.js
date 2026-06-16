@@ -285,6 +285,7 @@ Page({
     cache.removeCache('pets');
     cache.removeCache('weight');
     cache.removeCache('history');
+    cache.removeCache('today');
     cache.removeCache('schedule');
   },
 
@@ -429,9 +430,6 @@ Page({
     });
   },
 
-  onGallery() {
-    wx.navigateTo({ url: `/pages/pet-gallery/pet-gallery?id=${this.data.petId}` });
-  },
 
   // 预览宠物头像
   onPreviewAvatar() {
