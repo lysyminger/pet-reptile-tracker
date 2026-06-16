@@ -51,11 +51,12 @@
 
 <!-- 高清缩放查看器（生化危机式自由查看：双指缩放 + 拖动） -->
 <view class="viewer" wx:if="{{viewerVisible}}" catchtap="closeViewer">
-  <movable-area class="viewer-area">
-    <movable-view class="viewer-mv" direction="all" inertia
-                  scale scale-min="1" scale-max="6" scale-value="1"
-                  out-of-bounds catchtap="noop">
-      <image class="viewer-img" src="{{viewerSrc}}" mode="widthFix" show-menu-by-longpress></image>
+  <movable-area class="viewer-area" scale-area>
+    <movable-view class="viewer-mv" direction="all" inertia friction="3"
+                  scale scale-min="0.5" scale-max="6" scale-value="1"
+                  out-of-bounds catchtap="noop"
+                  bindtouchstart="onViewerTouchStart" bindtouchend="onViewerTouchEnd">
+      <image class="viewer-img" src="{{viewerSrc}}" mode="aspectFit" show-menu-by-longpress="{{viewerMenu}}"></image>
     </movable-view>
   </movable-area>
   <view class="viewer-loading" wx:if="{{viewerLoading}}">高清加载中…</view>
