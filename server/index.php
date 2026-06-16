@@ -56,6 +56,7 @@ $routes = [
 
     ['GET',    '#^/pet-photos$#',            'photos.php',    'photos_list'],
     ['POST',   '#^/pet-photos$#',            'photos.php',    'photos_create'],
+    ['PUT',    '#^/pet-photos/([\w-]+)$#',   'photos.php',    'photos_update'],
     ['DELETE', '#^/pet-photos/([\w-]+)$#',   'photos.php',    'photos_delete'],
 ];
 

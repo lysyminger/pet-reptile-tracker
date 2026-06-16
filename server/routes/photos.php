@@ -63,6 +63,37 @@ function photos_create(): void {
     json_ok($row);
 }
 
+// PUT /pet-photos/:id —— 修改照片信息（目前支持 taken_at 拍摄时间、caption）
+function photos_update(string $id): void {
+    $openid = $GLOBALS['openid'];
+    $body   = request_body();
+
+    $stmt = db()->prepare(
+        'SELECT ph._id FROM pet_photos ph JOIN pet_info p ON ph.pet_id = p._id WHERE ph._id = ? AND p.user_openid = ?'
+    );
+    $stmt->execute([$id, $openid]);
+    if (!$stmt->fetch()) json_error('Not found', 404);
+
+    $fields = []; $vals = [];
+    if (array_key_exists('taken_at', $body)) {
+        $t = trim((string)$body['taken_at']);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $t)) $t .= ' 12:00:00';
+        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $t)) json_error('taken_at 格式错误');
+        $fields[] = 'taken_at = ?'; $vals[] = $t;
+    }
+    if (array_key_exists('caption', $body)) {
+        $fields[] = 'caption = ?'; $vals[] = (string)$body['caption'];
+    }
+    if (empty($fields)) json_error('无可更新字段');
+
+    $vals[] = $id;
+    db()->prepare('UPDATE pet_photos SET ' . implode(', ', $fields) . ' WHERE _id = ?')->execute($vals);
+
+    $r = db()->prepare('SELECT * FROM pet_photos WHERE _id = ?');
+    $r->execute([$id]);
+    json_ok($r->fetch());
+}
+
 // DELETE /pet-photos/:id —— 删记录 + 删物理文件（原图 + 缩略图）
 function photos_delete(string $id): void {
     $openid = $GLOBALS['openid'];
