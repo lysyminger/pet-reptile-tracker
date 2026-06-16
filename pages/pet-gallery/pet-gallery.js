@@ -33,10 +33,16 @@ Page({
     petTabs: [],              // [{_id, name, avatar}]，含「全部」
     timeline: [],             // [{date,label,items:[{_id,url,thumb,localThumb,pet_name}]}]
     photoCount: 0,
-    uploadDate: '',           // 上传时间(YYYY-MM-DD)
     today: '',
     loading: true,
     uploading: false,
+    // 日期选择浮层
+    dateSheetVisible: false,
+    dateSheetMode: 'upload',  // 'upload' 先选图后选时间 | 'edit' 改某张照片时间
+    dateSheetValue: '',
+    dateSheetPhotoId: '',
+    pendingFiles: [],
+    pendingCount: 0,
     // 查看器
     viewerVisible: false,
     viewerSrc: '',
@@ -116,10 +122,7 @@ Page({
     }))));
   },
 
-  onUploadDateChange(e) {
-    this.setData({ uploadDate: e.detail.value });
-  },
-
+  // 先选图，再弹出日期浮层选择保存到哪一天
   onAddPhoto() {
     if (this.data.uploading) return;
     if (!this.data.activePetId) {
@@ -133,12 +136,64 @@ Page({
       sourceType: ['album', 'camera'],
       success: (res) => {
         const files = (res.tempFiles || []).map(f => f.tempFilePath).filter(Boolean);
-        if (files.length) this.uploadAll(files);
+        if (!files.length) return;
+        this.setData({
+          pendingFiles: files,
+          pendingCount: files.length,
+          dateSheetMode: 'upload',
+          dateSheetValue: this.data.today,
+          dateSheetVisible: true
+        });
       }
     });
   },
 
-  async uploadAll(files) {
+  // 长按照片：改时间 / 删除
+  onLongPress(e) {
+    const id = e.currentTarget.dataset.id;
+    const date = String(e.currentTarget.dataset.date || '').slice(0, 10) || this.data.today;
+    wx.showActionSheet({
+      itemList: ['修改日期', '删除'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.setData({
+            dateSheetMode: 'edit',
+            dateSheetPhotoId: id,
+            dateSheetValue: date,
+            dateSheetVisible: true
+          });
+        } else if (res.tapIndex === 1) {
+          this.confirmDelete(id);
+        }
+      }
+    });
+  },
+
+  onDateSheetChange(e) {
+    this.setData({ dateSheetValue: e.detail.value });
+  },
+  closeDateSheet() {
+    this.setData({ dateSheetVisible: false, pendingFiles: [] });
+  },
+  async onDateSheetConfirm() {
+    const { dateSheetMode, dateSheetValue, dateSheetPhotoId, pendingFiles } = this.data;
+    this.setData({ dateSheetVisible: false });
+    if (dateSheetMode === 'upload') {
+      if (pendingFiles.length) this.uploadAll(pendingFiles, dateSheetValue);
+      this.setData({ pendingFiles: [] });
+    } else {
+      try {
+        await api.put('/pet-photos/' + dateSheetPhotoId, { taken_at: dateSheetValue });
+        wx.showToast({ title: '已更新日期', icon: 'success' });
+        this.loadPhotos();
+      } catch (err) {
+        console.error('改日期失败:', err);
+        wx.showToast({ title: '更新失败', icon: 'none' });
+      }
+    }
+  },
+
+  async uploadAll(files, takenDate) {
     this.setData({ uploading: true });
     wx.showLoading({ title: `上传中 0/${files.length}`, mask: true });
     let done = 0, ok = 0;
@@ -150,7 +205,7 @@ Page({
             pet_id: this.data.activePetId,
             url: up.url,
             thumb_url: up.thumb || up.url,
-            taken_at: this.data.uploadDate
+            taken_at: takenDate || this.data.today
           });
           // 上传即预热本地缓存（缩略图 + 原图），下次显示/查看秒开、不再拉服务器
           imageCache.ensureLocal(up.thumb || up.url);
@@ -194,8 +249,7 @@ Page({
     }
   },
 
-  onLongPress(e) {
-    const id = e.currentTarget.dataset.id;
+  confirmDelete(id) {
     wx.showModal({
       title: '删除照片', content: '确定删除这张照片吗？', confirmColor: '#E74C3C',
       success: async (res) => {
