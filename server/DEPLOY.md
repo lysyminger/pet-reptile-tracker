@@ -186,6 +186,35 @@ curl -i https://api.lysyminger.online/api/nonexistent
 
 ---
 
+## 8.5 配置内容安全（消息推送）
+
+微信要求 UGC（头像图片、昵称等）过内容安全 API，否则审核会被拒。图片走异步检测 `media_check_async`，结果由微信推送到回调地址 `/wx/callback`，由后端 `routes/wxcallback.php` 处理（risky 时自动清除头像并删文件）。
+
+1. `.env` 里加一行（值用 `openssl rand -hex 16` 生成）：
+   ```
+   WX_MSG_TOKEN=<随机字符串>
+   ```
+2. 确保 `server/cache/` 目录存在且 `www` 用户可写（存 access_token 缓存）：
+   ```
+   mkdir -p /www/wwwroot/api.lysyminger.online/cache
+   chown www:www /www/wwwroot/api.lysyminger.online/cache
+   ```
+3. 建 `media_check` 表（待检图片 / 结果记录）：
+   ```
+   cd /www/wwwroot/api.lysyminger.online
+   mysql -u pet_reptile -p pet_reptile < sql/media_check.sql
+   ```
+4. [mp.weixin.qq.com](https://mp.weixin.qq.com) → 开发管理 → 开发设置 → **消息推送**：
+   - URL：`https://api.lysyminger.online/api/wx/callback`
+   - Token：和 `.env` 里的 `WX_MSG_TOKEN` **完全一致**
+   - 数据格式：**JSON**
+   - 加密方式：**明文模式**
+   - 提交时微信会发一次 GET 校验，后端会回显 `echostr`，正常会直接通过。
+
+> 验证回调通不通（本地）：用正确签名请求应回显 echostr，错误签名应 403。
+
+---
+
 ## 9. 真机测试小程序
 
 1. 开发者工具打开项目，点「真机调试」或「预览」扫码

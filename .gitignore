@@ -12,6 +12,9 @@ Thumbs.db
 *.env
 server/.env
 
+# Runtime cache (access_token 等，server 自动生成)
+server/cache/
+
 # Database exports (real user data — never commit to a public repo)
 databasejson/
 
