@@ -28,8 +28,9 @@ Page({
   },
 
   onShow() {
+    const dir = app.tabTransition(1);
     this.setData({ tabAnim: '' });
-    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
+    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     this.refreshPetsCache();
   },
 

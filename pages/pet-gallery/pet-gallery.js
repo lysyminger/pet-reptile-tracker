@@ -56,9 +56,9 @@ Page({
   },
 
   onShow() {
-    // tab 切入淡入动画
+    const dir = app.tabTransition(2);
     this.setData({ tabAnim: '' });
-    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
+    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     // 刷新（相册内容会变，进入时拉一次）
     this.loadPets().then(() => this.loadPhotos());
   },
