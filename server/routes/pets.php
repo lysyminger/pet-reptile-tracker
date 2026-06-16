@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const PET_UPDATABLE = [
-    'name', 'species', 'avatar', 'arrivalDate', 'initialWeight',
+    'name', 'species', 'category', 'avatar', 'arrivalDate', 'initialWeight',
     'feed_interval', 'sub_interval', 'next_feed_date', 'next_sub_date'
 ];
 
@@ -35,6 +35,7 @@ function pets_create(): void {
         'user_openid'    => $openid, // 强制服务端 openid，忽略客户端传入
         'name'           => (string)($body['name'] ?? ''),
         'species'        => (string)($body['species'] ?? ''),
+        'category'       => (string)($body['category'] ?? 'reptile'),
         'avatar'         => (string)($body['avatar'] ?? ''),
         'arrivalDate'    => (string)($body['arrivalDate'] ?? ''),
         'initialWeight'  => isset($body['initialWeight']) ? (float)$body['initialWeight'] : 0,
