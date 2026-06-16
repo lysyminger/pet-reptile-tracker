@@ -1,24 +1,64 @@
-<!--pages/pet-gallery/pet-gallery.wxml - 宠物相册-->
+<!--pages/pet-gallery/pet-gallery.wxml - 宠物相册（时间轴 + 高清缩放）-->
 <view class="container">
-  <view class="grid">
-    <!-- 上传入口 -->
-    <view class="cell add-cell" bindtap="onAddPhoto">
-      <text class="add-plus">+</text>
-      <text class="add-text">添加照片</text>
+  <!-- 宠物切换 -->
+  <scroll-view class="pet-tabs" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="pet-tab {{activePetId === item._id ? 'active' : ''}}"
+          wx:for="{{petTabs}}" wx:key="_id"
+          bindtap="onSelectPet" data-id="{{item._id}}">
+      <image wx:if="{{item._id}}" class="pet-tab-avatar" src="{{item.avatar || '/assets/images/default-pet.svg'}}" mode="aspectFill"></image>
+      <text class="pet-tab-all" wx:else>🐾</text>
+      <text class="pet-tab-name">{{item.name}}</text>
     </view>
+  </scroll-view>
 
-    <!-- 照片 -->
-    <view class="cell photo-cell" wx:for="{{photos}}" wx:key="_id"
-          bindtap="onPreview" data-url="{{item.url}}"
-          bindlongpress="onLongPress" data-id="{{item._id}}">
-      <image class="photo-img" src="{{item.localThumb}}" mode="aspectFill" lazy-load></image>
+  <!-- 上传栏 -->
+  <view class="upload-bar">
+    <picker mode="date" value="{{uploadDate}}" start="2015-01-01" end="{{today}}" bindchange="onUploadDateChange">
+      <view class="upload-date">📅 上传到 <text class="upload-date-val">{{uploadDate}}</text> ›</view>
+    </picker>
+    <view class="upload-btn" bindtap="onAddPhoto">+ 添加照片</view>
+  </view>
+
+  <!-- 时间轴 -->
+  <view class="timeline" wx:if="{{timeline.length > 0}}">
+    <view class="tl-group" wx:for="{{timeline}}" wx:for-item="group" wx:key="date"
+          style="animation-delay: {{index * 60}}ms">
+      <view class="tl-date">
+        <view class="tl-dot"></view>
+        <text class="tl-date-text">{{group.label}}</text>
+        <text class="tl-count">{{group.items.length}} 张</text>
+      </view>
+      <view class="tl-grid">
+        <view class="ph-cell" wx:for="{{group.items}}" wx:for-item="item" wx:key="_id"
+              style="animation-delay: {{index * 40}}ms"
+              bindtap="onOpenViewer" data-url="{{item.url}}"
+              bindlongpress="onLongPress" data-id="{{item._id}}">
+          <image class="ph-img" src="{{item.localThumb}}" mode="aspectFill" lazy-load></image>
+          <text class="ph-pet" wx:if="{{!activePetId && item.pet_name}}">{{item.pet_name}}</text>
+        </view>
+      </view>
     </view>
   </view>
 
-  <view class="empty-hint" wx:if="{{!loading && photos.length === 0}}">
+  <!-- 空态 -->
+  <view class="empty-hint" wx:if="{{!loading && timeline.length === 0}}">
     <text class="empty-icon">📷</text>
-    <text class="empty-text">还没有照片，点「添加照片」记录它的成长吧</text>
+    <text class="empty-text">还没有照片，记录它的成长瞬间吧</text>
   </view>
 
   <view class="tip">长按照片可删除 · 图片仅你可见，会经安全审核</view>
+</view>
+
+<!-- 高清缩放查看器（生化危机式自由查看：双指缩放 + 拖动） -->
+<view class="viewer" wx:if="{{viewerVisible}}" catchtap="closeViewer">
+  <movable-area class="viewer-area">
+    <movable-view class="viewer-mv" direction="all" inertia
+                  scale scale-min="1" scale-max="6" scale-value="1"
+                  out-of-bounds catchtap="noop">
+      <image class="viewer-img" src="{{viewerSrc}}" mode="widthFix" show-menu-by-longpress></image>
+    </movable-view>
+  </movable-area>
+  <view class="viewer-loading" wx:if="{{viewerLoading}}">高清加载中…</view>
+  <view class="viewer-close" catchtap="closeViewer">✕</view>
+  <view class="viewer-hint">双指缩放 · 拖动查看 · 点击空白关闭</view>
 </view>

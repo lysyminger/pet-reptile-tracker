@@ -2,16 +2,27 @@
 // 宠物相册：列表 / 新增 / 删除。归属一律以 JWT 的 openid 为准。
 declare(strict_types=1);
 
-// GET /pet-photos?pet_id=X —— 按宠物列出相册（倒序，最新在前）
+// GET /pet-photos?pet_id=X —— 按宠物列出；不传 pet_id 则列出该用户所有宠物的照片
+// 排序按拍摄时间(taken_at)优先、其次创建时间，倒序（时间轴最新在前）
 function photos_list(): void {
     $openid = $GLOBALS['openid'];
     $petId  = (string)($_GET['pet_id'] ?? '');
-    if ($petId === '') json_error('缺少 pet_id');
-    assert_pet_owned($petId, $openid);
+    $limit  = isset($_GET['limit']) ? max(1, min(500, (int)$_GET['limit'])) : 300;
+    $order  = 'ORDER BY COALESCE(ph.taken_at, ph.created_at) DESC, ph.created_at DESC';
 
-    $limit = isset($_GET['limit']) ? max(1, min(200, (int)$_GET['limit'])) : 100;
-    $stmt = db()->prepare("SELECT * FROM pet_photos WHERE pet_id = ? ORDER BY created_at DESC LIMIT $limit");
-    $stmt->execute([$petId]);
+    if ($petId !== '') {
+        assert_pet_owned($petId, $openid);
+        $stmt = db()->prepare("SELECT ph.* FROM pet_photos ph WHERE ph.pet_id = ? $order LIMIT $limit");
+        $stmt->execute([$petId]);
+    } else {
+        // 全部：JOIN 限定本用户的宠物，并带上宠物名字方便前端「全部」视图标注
+        $stmt = db()->prepare(
+            "SELECT ph.*, p.name AS pet_name FROM pet_photos ph
+             JOIN pet_info p ON ph.pet_id = p._id
+             WHERE p.user_openid = ? $order LIMIT $limit"
+        );
+        $stmt->execute([$openid]);
+    }
     json_ok($stmt->fetchAll());
 }
 
@@ -28,12 +39,22 @@ function photos_create(): void {
 
     $id  = new_id();
     $now = date('Y-m-d H:i:s');
+    // 拍摄时间：客户端可传 "YYYY-MM-DD" 或 "YYYY-MM-DD HH:MM:SS"，不传则用当前时间
+    $takenAt = isset($body['taken_at']) ? trim((string)$body['taken_at']) : '';
+    if ($takenAt !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $takenAt)) {
+        $takenAt .= ' 12:00:00';
+    }
+    if ($takenAt === '' || !preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $takenAt)) {
+        $takenAt = $now;
+    }
+
     $row = [
         '_id'        => $id,
         'pet_id'     => $petId,
         'url'        => $url,
         'thumb_url'  => isset($body['thumb_url']) ? (string)$body['thumb_url'] : null,
         'caption'    => isset($body['caption'])   ? (string)$body['caption']   : null,
+        'taken_at'   => $takenAt,
         'created_at' => $now,
     ];
     $cols = array_keys($row);

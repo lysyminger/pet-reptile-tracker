@@ -95,6 +95,22 @@
       </view>
     </view>
   </view>
+
+  <!-- 成长相册 -->
+  <view class="section-title mt-24">
+    <text>成长相册</text>
+    <text class="section-subtitle" bindtap="onOpenGallery">查看全部 ›</text>
+  </view>
+
+  <view class="album-card card" bindtap="onOpenGallery">
+    <view class="album-strip" wx:if="{{recentPhotos.length > 0}}">
+      <image class="album-thumb" wx:for="{{recentPhotos}}" wx:key="_id" src="{{item.localThumb}}" mode="aspectFill" lazy-load></image>
+    </view>
+    <view class="album-empty" wx:else>
+      <text class="album-empty-icon">📷</text>
+      <text class="album-empty-text">记录爱宠的成长瞬间</text>
+    </view>
+  </view>
 </view>
 
 <!-- 打卡弹窗 -->

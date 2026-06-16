@@ -3,6 +3,7 @@ const app = getApp();
 const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
 const whatsNew = require('../../utils/whatsNew.js');
+const imageCache = require('../../utils/imageCache.js');
 
 Page({
   data: {
@@ -26,7 +27,8 @@ Page({
     selectedSubstrate: '',
     customSubstrate: '',
     feedAmount: '',
-    feedDate: ''
+    feedDate: '',
+    recentPhotos: []
   },
 
   onLoad() {
@@ -39,6 +41,31 @@ Page({
   onShow() {
     // 强制刷新，不使用缓存
     this.refreshTodayData();
+    this.loadRecentPhotos();
+  },
+
+  // 首页「成长相册」最近几张缩略图（走本地缓存，不重复拉服务器）
+  async loadRecentPhotos() {
+    try {
+      const list = await api.get('/pet-photos', { limit: 8 });
+      const photos = (Array.isArray(list) ? list : []).map(p => ({
+        _id: p._id,
+        thumb: p.thumb_url || p.url,
+        localThumb: p.thumb_url || p.url
+      }));
+      this.setData({ recentPhotos: photos });
+      photos.forEach((p, i) => {
+        imageCache.ensureLocal(p.thumb).then(local => {
+          if (local && local !== p.localThumb) {
+            this.setData({ [`recentPhotos[${i}].localThumb`]: local });
+          }
+        });
+      });
+    } catch (e) { /* 静默：相册非核心，失败不打扰 */ }
+  },
+
+  onOpenGallery() {
+    wx.navigateTo({ url: '/pages/pet-gallery/pet-gallery' });
   },
 
   // 初始化日期

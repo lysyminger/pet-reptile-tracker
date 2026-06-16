@@ -1,36 +1,93 @@
-// pages/pet-gallery/pet-gallery.js —— 宠物相册
+// pages/pet-gallery/pet-gallery.js —— 宠物相册（选宠物 + 时间轴 + 高清缩放查看）
 const app = getApp();
 const api = require('../../utils/api.js');
 const imageCache = require('../../utils/imageCache.js');
 
+// 把照片列表按「拍摄日期」分组成时间轴
+function groupByDate(list) {
+  const groups = {};
+  const order = [];
+  list.forEach(p => {
+    const raw = p.taken_at || p.created_at || '';
+    const date = String(raw).slice(0, 10) || '未知日期';
+    if (!groups[date]) { groups[date] = []; order.push(date); }
+    groups[date].push(p);
+  });
+  return order.map(date => ({
+    date,
+    label: formatDateLabel(date),
+    items: groups[date]
+  }));
+}
+
+function formatDateLabel(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return date;
+  return `${m[1]}年${Number(m[2])}月${Number(m[3])}日`;
+}
+
 Page({
   data: {
-    petId: '',
-    photos: [],      // [{ _id, url, thumb, localThumb }]
+    activePetId: '',          // '' = 全部
+    petTabs: [],              // [{_id, name, avatar}]，含「全部」
+    timeline: [],             // [{date,label,items:[{_id,url,thumb,localThumb,pet_name}]}]
+    photoCount: 0,
+    uploadDate: '',           // 上传时间(YYYY-MM-DD)
+    today: '',
     loading: true,
-    uploading: false
+    uploading: false,
+    // 查看器
+    viewerVisible: false,
+    viewerSrc: '',
+    viewerLoading: false
   },
 
   onLoad(options) {
-    if (!options.id) {
-      wx.showToast({ title: '缺少宠物 ID', icon: 'none' });
-      return;
+    const today = app.formatDate(new Date());
+    this.setData({ today, uploadDate: today, activePetId: options.id || '' });
+    this.loadPets().then(() => this.loadPhotos());
+  },
+
+  async loadPets() {
+    try {
+      const pets = await api.get('/pets');
+      const arr = (Array.isArray(pets) ? pets : []).map(p => ({
+        _id: p._id, name: p.name, avatar: p.avatar
+      }));
+      // 「全部」放最前
+      const petTabs = [{ _id: '', name: '全部', avatar: '' }].concat(arr);
+      // 若进来时没指定宠物且只有一只，默认选它
+      let activePetId = this.data.activePetId;
+      if (!activePetId && arr.length === 1) activePetId = arr[0]._id;
+      this.setData({ petTabs, activePetId });
+    } catch (err) {
+      console.error('加载宠物失败:', err);
     }
-    this.setData({ petId: options.id });
+  },
+
+  onSelectPet(e) {
+    const id = e.currentTarget.dataset.id;
+    if (id === this.data.activePetId) return;
+    this.setData({ activePetId: id });
     this.loadPhotos();
   },
 
   async loadPhotos() {
     this.setData({ loading: true });
     try {
-      const list = await api.get('/pet-photos', { pet_id: this.data.petId });
+      const params = this.data.activePetId ? { pet_id: this.data.activePetId } : {};
+      const list = await api.get('/pet-photos', params);
       const photos = (Array.isArray(list) ? list : []).map(p => ({
         _id: p._id,
         url: p.url,
         thumb: p.thumb_url || p.url,
-        localThumb: p.thumb_url || p.url   // 先用网络地址占位，下面换成本地缓存
+        localThumb: p.thumb_url || p.url,
+        pet_name: p.pet_name || '',
+        taken_at: p.taken_at,
+        created_at: p.created_at
       }));
-      this.setData({ photos, loading: false });
+      const timeline = groupByDate(photos);
+      this.setData({ timeline, photoCount: photos.length, loading: false });
       this.cacheThumbs();
     } catch (err) {
       console.error('加载相册失败:', err);
@@ -39,20 +96,27 @@ Page({
     }
   },
 
-  // 把缩略图逐一换成本地缓存路径（下载一次，之后走本地）
+  // 缩略图换成本地缓存路径（下载一次，之后走磁盘）
   async cacheThumbs() {
-    const photos = this.data.photos;
-    await Promise.all(photos.map(async (p, i) => {
-      const local = await imageCache.ensureLocal(p.thumb);
-      if (local && local !== p.localThumb) {
-        this.setData({ [`photos[${i}].localThumb`]: local });
+    const tl = this.data.timeline;
+    await Promise.all(tl.map((g, gi) => Promise.all(g.items.map(async (it, ii) => {
+      const local = await imageCache.ensureLocal(it.thumb);
+      if (local && local !== it.localThumb) {
+        this.setData({ [`timeline[${gi}].items[${ii}].localThumb`]: local });
       }
-    }));
+    }))));
   },
 
-  // 选图上传（原图、不压缩）
+  onUploadDateChange(e) {
+    this.setData({ uploadDate: e.detail.value });
+  },
+
   onAddPhoto() {
     if (this.data.uploading) return;
+    if (!this.data.activePetId) {
+      wx.showToast({ title: '请先在上方选择一只宠物', icon: 'none' });
+      return;
+    }
     wx.chooseMedia({
       count: 9,
       mediaType: ['image'],
@@ -71,12 +135,13 @@ Page({
     let done = 0, ok = 0;
     for (const fp of files) {
       try {
-        const up = await api.uploadFile(fp, 'file');     // { url, thumb }
+        const up = await api.uploadFile(fp, 'file');
         if (up && up.url) {
           await api.post('/pet-photos', {
-            pet_id: this.data.petId,
+            pet_id: this.data.activePetId,
             url: up.url,
-            thumb_url: up.thumb || up.url
+            thumb_url: up.thumb || up.url,
+            taken_at: this.data.uploadDate
           });
           ok++;
         }
@@ -92,14 +157,19 @@ Page({
     if (ok) this.loadPhotos();
   },
 
-  // 点击大图预览（用原图，previewImage 自带缓存）
-  onPreview(e) {
+  // 打开高清查看器：先显示占位，再异步换成本地缓存的高清原图
+  onOpenViewer(e) {
     const url = e.currentTarget.dataset.url;
-    const urls = this.data.photos.map(p => p.url);
-    wx.previewImage({ current: url, urls });
+    this.setData({ viewerVisible: true, viewerSrc: url, viewerLoading: true });
+    imageCache.ensureLocal(url).then(local => {
+      this.setData({ viewerSrc: local || url, viewerLoading: false });
+    });
   },
+  closeViewer() {
+    this.setData({ viewerVisible: false, viewerSrc: '' });
+  },
+  noop() {},
 
-  // 长按删除
   onLongPress(e) {
     const id = e.currentTarget.dataset.id;
     wx.showModal({
@@ -108,8 +178,8 @@ Page({
         if (!res.confirm) return;
         try {
           await api.del('/pet-photos/' + id);
-          this.setData({ photos: this.data.photos.filter(p => p._id !== id) });
           wx.showToast({ title: '已删除', icon: 'success' });
+          this.loadPhotos();
         } catch (err) {
           console.error('删除失败:', err);
           wx.showToast({ title: '删除失败', icon: 'none' });
