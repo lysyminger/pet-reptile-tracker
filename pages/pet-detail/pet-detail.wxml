@@ -6,7 +6,7 @@
       <image class="pet-avatar" src="{{petInfo.avatar || '/assets/images/default-pet.svg'}}" mode="aspectFill" bindtap="onPreviewAvatar"></image>
       <view class="pet-info-text">
         <text class="pet-name">{{petInfo.name}}</text>
-        <text class="pet-species">{{petInfo.species}}</text>
+        <text class="pet-species">{{catLabel}} · {{petInfo.species}}</text>
       </view>
       <view class="edit-btn" bindtap="onEditPet">✎</view>
     </view>
@@ -24,8 +24,8 @@
         <text class="detail-label">喂食频率</text>
         <text class="detail-value">{{petInfo.feed_interval}}天/次</text>
       </view>
-      <view class="detail-item">
-        <text class="detail-label">垫材频率</text>
+      <view class="detail-item" wx:if="{{showSub}}">
+        <text class="detail-label">{{subLabel}}频率</text>
         <text class="detail-value">{{petInfo.sub_interval}}天/次</text>
       </view>
     </view>
@@ -37,9 +37,9 @@
       <text class="action-icon">🍖</text>
       <text class="action-text">喂食打卡</text>
     </view>
-    <view class="action-btn" bindtap="onSubstrateCheckIn">
+    <view class="action-btn" bindtap="onSubstrateCheckIn" wx:if="{{showSub}}">
       <text class="action-icon">🧹</text>
-      <text class="action-text">换垫材</text>
+      <text class="action-text">{{subLabel || '垫材更换'}}</text>
     </view>
     <view class="action-btn" bindtap="onWeightRecord">
       <text class="action-icon">⚖️</text>
@@ -61,7 +61,7 @@
       <view class="reminder-item" wx:if="{{hasSubSchedule}}">
         <text class="reminder-icon">🧹</text>
         <view class="reminder-info">
-          <text class="reminder-label">垫材</text>
+          <text class="reminder-label">{{subShort}}</text>
           <text class="reminder-date {{isSubOverdue ? 'text-danger' : ''}}">{{nextSubDate}} {{isSubOverdue ? '(已逾期)' : ''}}</text>
         </view>
       </view>
@@ -138,7 +138,7 @@
   <view class="history-list" wx:if="{{historyRecords.length > 0}}">
     <view class="history-item card" wx:for="{{historyRecords}}" wx:key="id">
       <view class="history-header">
-        <text class="history-type">{{item.type === 'feed' ? '🍖 喂食' : (item.type === 'substrate' ? '🧹 垫材' : '⚖️ 体重')}}</text>
+        <text class="history-type">{{item.type === 'feed' ? '🍖 喂食' : (item.type === 'substrate' ? '🧹 ' + subShort : '⚖️ 体重')}}</text>
         <text class="history-date">{{item.date}}</text>
       </view>
       <view class="history-detail">

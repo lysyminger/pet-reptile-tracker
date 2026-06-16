@@ -2,6 +2,7 @@
 const app = getApp();
 const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
+const cats = require('../../utils/petCategories.js');
 
 Page({
   data: {
@@ -142,8 +143,14 @@ Page({
         position: padding.left + (index * chartInnerWidth) / (weightRecords.length > 1 ? weightRecords.length - 1 : 1)
       }));
 
+      const tmpl = cats.getCategory(petInfo.category);
+
       this.setData({
         petInfo,
+        catLabel: cats.categoryDisplay(petInfo.category),
+        showSub: !!tmpl.modules.substrate,
+        subLabel: tmpl.subLabel || '更换',
+        subShort: tmpl.subShort || '垫材',
         weightRecords: weightRecords.slice().reverse(),  // 反转为正序，最早的在前
         chartDataPoints,  // 图表数据点位置
         historyRecords,

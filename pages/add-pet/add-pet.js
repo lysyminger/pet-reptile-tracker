@@ -2,6 +2,7 @@
 const app = getApp();
 const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
+const cats = require('../../utils/petCategories.js');
 
 Page({
   data: {
@@ -17,7 +18,15 @@ Page({
     showCustomFeed: false,
     showCustomSub: false,
     customFeedInterval: '',
-    customSubInterval: ''
+    customSubInterval: '',
+    // 品类（地基）
+    category: cats.DEFAULT_CATEGORY,
+    categoryIndex: 0,
+    categoryOptions: cats.CATEGORY_LIST.map(c => `${c.icon} ${c.label}`),
+    showSubstrate: true,
+    feedLabel: '喂食',
+    subLabel: '垫材更换',
+    speciesPlaceholder: '例如：豹纹守宫、玉米蛇'
   },
 
   onLoad(options) {
@@ -27,7 +36,40 @@ Page({
     if (options.id) {
       this.setData({ petId: options.id, isEdit: true });
       this.loadPetData();
+    } else {
+      // 新增模式：套用默认品类的模板（标签 / 显隐 / 默认间隔）
+      this.applyCategory(cats.DEFAULT_CATEGORY, true);
     }
+  },
+
+  // 切换品类
+  onCategoryChange(e) {
+    const idx = Number(e.detail.value);
+    const key = cats.CATEGORY_KEYS[idx];
+    this.applyCategory(key, true);
+  },
+
+  // 套用品类模板。setDefaults=true 时同时重置喂食/垫材间隔为该品类默认值
+  applyCategory(key, setDefaults) {
+    const tmpl = cats.getCategory(key);
+    const idx = Math.max(0, cats.CATEGORY_KEYS.indexOf(key));
+    const patch = {
+      category: cats.CATEGORY_KEYS[idx] || cats.DEFAULT_CATEGORY,
+      categoryIndex: idx,
+      showSubstrate: !!tmpl.modules.substrate,
+      feedLabel: tmpl.feedLabel || '喂食频率',
+      subLabel: tmpl.subLabel || '更换频率',
+      speciesPlaceholder: tmpl.speciesPlaceholder || '它是什么呢'
+    };
+    if (setDefaults) {
+      patch.feedInterval = tmpl.feedDefault;
+      patch.subInterval = tmpl.subDefault;
+      patch.showCustomFeed = false;
+      patch.showCustomSub = false;
+      patch.customFeedInterval = '';
+      patch.customSubInterval = '';
+    }
+    this.setData(patch);
   },
 
   // 加载宠物数据（编辑模式）
@@ -44,6 +86,8 @@ Page({
         feedInterval: pet.feed_interval || 3,
         subInterval: pet.sub_interval || 15
       });
+      // 套用该宠物的品类模板（标签/显隐），但保留它已保存的间隔
+      this.applyCategory(pet.category || cats.DEFAULT_CATEGORY, false);
     } catch (err) {
       console.error('加载宠物数据失败:', err);
     }
@@ -149,8 +193,13 @@ Page({
     const finalFeedInterval = this.data.showCustomFeed ? parseInt(customFeedInterval) || feedInterval : feedInterval;
     const finalSubInterval  = this.data.showCustomSub  ? parseInt(customSubInterval)  || subInterval  : subInterval;
 
-    if (finalFeedInterval < 1 || finalSubInterval < 1) {
-      wx.showToast({ title: '频率至少为 1 天', icon: 'none' });
+    if (finalFeedInterval < 1) {
+      wx.showToast({ title: '喂食频率至少为 1 天', icon: 'none' });
+      return;
+    }
+    // 该品类没有「垫材/清洁」模块时不校验、也不送 sub_interval（不安排该日程）
+    if (this.data.showSubstrate && finalSubInterval < 1) {
+      wx.showToast({ title: '更换频率至少为 1 天', icon: 'none' });
       return;
     }
 
@@ -164,10 +213,11 @@ Page({
       const petData = {
         name: petName.trim(),
         species: species.trim(),
+        category: this.data.category,
         arrivalDate: this.data.arrivalDate,
         initialWeight: this.data.initialWeight ? parseFloat(this.data.initialWeight) : 0,
         feed_interval: finalFeedInterval,
-        sub_interval: finalSubInterval,
+        sub_interval: this.data.showSubstrate ? finalSubInterval : null,
         avatar
         // user_openid 由服务端从 token 注入，不要在客户端传
         // created_at 由服务端默认值生成

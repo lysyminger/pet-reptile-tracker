@@ -17,8 +17,18 @@
       </view>
 
       <view class="form-item">
+        <text class="form-label">类别 *</text>
+        <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+          <view class="picker-field" hover-class="picker-hover">
+            <text class="picker-text">{{categoryOptions[categoryIndex]}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-item">
         <text class="form-label">品种 *</text>
-        <input class="input-field" placeholder="例如：豹纹守宫、玉米蛇" value="{{species}}" bindinput="onSpeciesInput" />
+        <input class="input-field" placeholder="{{speciesPlaceholder}}" value="{{species}}" bindinput="onSpeciesInput" />
       </view>
 
       <view class="form-item">
@@ -43,7 +53,7 @@
       <view class="divider"></view>
 
       <view class="form-item">
-        <text class="form-label">喂食频率 (天) *</text>
+        <text class="form-label">{{feedLabel}}频率 (天) *</text>
         <view class="frequency-selector">
           <view class="freq-btn {{feedInterval === 1 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="1">1 天</view>
           <view class="freq-btn {{feedInterval === 2 ? 'active' : ''}}" bindtap="setFeedInterval" data-days="2">2 天</view>
@@ -55,8 +65,8 @@
         <input wx:if="{{showCustomFeed}}" class="input-field mt-16" type="digit" placeholder="输入天数" value="{{customFeedInterval}}" bindinput="onCustomFeedInput" />
       </view>
 
-      <view class="form-item">
-        <text class="form-label">垫材更换频率 (天) *</text>
+      <view class="form-item" wx:if="{{showSubstrate}}">
+        <text class="form-label">{{subLabel}}频率 (天) *</text>
         <view class="frequency-selector">
           <view class="freq-btn {{subInterval === 7 ? 'active' : ''}}" bindtap="setSubInterval" data-days="7">7 天</view>
           <view class="freq-btn {{subInterval === 10 ? 'active' : ''}}" bindtap="setSubInterval" data-days="10">10 天</view>

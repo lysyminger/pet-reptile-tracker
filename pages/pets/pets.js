@@ -2,6 +2,7 @@
 const app = getApp();
 const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
+const cats = require('../../utils/petCategories.js');
 
 // 取 "YYYY-MM-DD" 的年月日构造本地零点（避免时区差一天）
 function toLocalDay(s) {
@@ -103,8 +104,12 @@ Page({
           subStatusText = '未设置';
         }
 
+        const tmpl = cats.getCategory(pet.category);
         return {
           ...pet,
+          catLabel: cats.categoryDisplay(pet.category),
+          showSub: !!tmpl.modules.substrate,
+          subShort: tmpl.subShort || '垫材',
           arrivalDays: arrivalDaysOf(pet.arrivalDate),
           latestWeight: weightMap[pet._id],
           feedStatus,
