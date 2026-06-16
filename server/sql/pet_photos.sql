@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS pet_photos (
   url        VARCHAR(512) NOT NULL,
   thumb_url  VARCHAR(512) NULL,
   caption    VARCHAR(200) NULL,
+  taken_at   DATETIME     NULL,
   created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (_id),
-  KEY idx_pet (pet_id, created_at)
+  KEY idx_pet (pet_id, taken_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

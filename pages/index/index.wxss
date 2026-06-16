@@ -292,6 +292,24 @@
   color: var(--text-hint);
 }
 
+/* 成长相册卡片 */
+.album-card { padding: 20rpx; }
+.album-strip { display: flex; flex-direction: row; overflow: hidden; }
+.album-thumb {
+  width: 130rpx; height: 130rpx;
+  border-radius: 12rpx;
+  margin-right: 12rpx;
+  background-color: var(--bg-color);
+  flex-shrink: 0;
+}
+.album-thumb:last-child { margin-right: 0; }
+.album-empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40rpx 0;
+}
+.album-empty-icon { font-size: 60rpx; margin-bottom: 12rpx; }
+.album-empty-text { font-size: 26rpx; color: var(--text-hint); }
+
 /* 弹窗样式 */
 .modal-mask {
   position: fixed;
