@@ -39,7 +39,8 @@ Page({
     // 查看器
     viewerVisible: false,
     viewerSrc: '',
-    viewerLoading: false
+    viewerLoading: false,
+    viewerMenu: true          // 单指时允许微信长按菜单；双指时关闭，避免缩放误触
   },
 
   onLoad(options) {
@@ -143,6 +144,9 @@ Page({
             thumb_url: up.thumb || up.url,
             taken_at: this.data.uploadDate
           });
+          // 上传即预热本地缓存（缩略图 + 原图），下次显示/查看秒开、不再拉服务器
+          imageCache.ensureLocal(up.thumb || up.url);
+          if (up.url) imageCache.ensureLocal(up.url);
           ok++;
         }
       } catch (err) {
@@ -166,9 +170,21 @@ Page({
     });
   },
   closeViewer() {
-    this.setData({ viewerVisible: false, viewerSrc: '' });
+    this.setData({ viewerVisible: false, viewerSrc: '', viewerMenu: true });
   },
   noop() {},
+
+  // 双指（缩放）时关掉微信原生长按菜单，只有单指长按才弹
+  onViewerTouchStart(e) {
+    const multi = e.touches && e.touches.length >= 2;
+    if (multi && this.data.viewerMenu) this.setData({ viewerMenu: false });
+  },
+  onViewerTouchEnd(e) {
+    // 所有手指离开后恢复单指长按菜单
+    if ((!e.touches || e.touches.length === 0) && !this.data.viewerMenu) {
+      this.setData({ viewerMenu: true });
+    }
+  },
 
   onLongPress(e) {
     const id = e.currentTarget.dataset.id;
