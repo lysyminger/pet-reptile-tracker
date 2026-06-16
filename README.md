@@ -258,6 +258,14 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ## 更新日志
 
+### v2.3.0 — 成长相册 & 多品类
+- 📷 新增「相册」底部 Tab：按宠物切换、按拍摄日期分组的时间轴；先选图再选日期，支持长按改日期/删除
+- 🔍 高清查看器：`movable-view` 双指缩放(0.5~6x) + 自由拖动；图片本地缓存(下载一次复用)，`/uploads` 1 年强缓存
+- 🦎 多品类「地基」：`utils/petCategories.js` 模板驱动爬行/昆虫节肢/两栖/小宠/猫狗，按品类显隐护理模块；`pet_info.category` 字段
+- 🗂️ 图片存储按 `uploads/<openid>/<年>/<月>/` 分目录，便于维护与备份
+- 🛡️ 相册图片同样接入 `media_check_async` 内容安全，违规由回调自动清除
+- ⚡ 今日页 60s 快照缓存，切 Tab 不再每次查库
+
 ### v2.2.0 — 头像圆形裁剪 & 养宠天数
 - 🖼️ 上传头像新增裁剪页（`pages/avatar-cropper/`）：Canvas 2D + 自处理拖动 / 双指缩放，圆形裁剪框，导出圆形 PNG
 - 🔁 `add-pet` 选图后经裁剪页 `eventChannel` 回传再上传

@@ -7,7 +7,6 @@ const imageCache = require('../../utils/imageCache.js');
 
 Page({
   data: {
-    tabAnim: '',
     currentDate: '',
     weekday: '',
     weather: '',
@@ -40,11 +39,6 @@ Page({
   },
 
   onShow() {
-    // tab 切换方向性滑入动画
-    const dir = app.tabTransition(0);
-    this.setData({ tabAnim: '' });
-    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
-
     // 优先用今日快照缓存（60s）：切 tab 时秒显、不查库；过期或刚打卡才刷新
     this.renderTodaySmart();
     this.loadRecentPhotos();

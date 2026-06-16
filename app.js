@@ -22,17 +22,8 @@ App({
 
   globalData: {
     openid: null,
-    lastTabIndex: null,   // 上一个 tab 序号，用于判断切换方向
     foodTypeOptions: ['杜比亚', '蟋蟀', '乳鼠', '活体', '冰冻', '蔬菜', '水果', '其他'],
     substrateTypeOptions: ['厨房纸', '瓦楞纸', '爬沙', '树皮', '椰土', '其他']
-  },
-
-  // tab 切换方向：去右边的 tab 从右滑入，去左边的从左滑入；首次进入不滑
-  tabTransition(index) {
-    const last = this.globalData.lastTabIndex;
-    this.globalData.lastTabIndex = index;
-    if (last === null || last === index) return '';
-    return index > last ? 'tab-in-right' : 'tab-in-left';
   },
 
   // 确保已登录（有 token + openid）

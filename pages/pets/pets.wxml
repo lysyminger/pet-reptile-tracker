@@ -1,5 +1,5 @@
 <!--pages/pets/pets.wxml - 宠物列表页-->
-<view class="container {{tabAnim}}">
+<view class="container">
   <!-- 头部 -->
   <view class="header">
     <text class="header-title">我的爱宠</text>

@@ -12,7 +12,6 @@ function toLocalDay(s) {
 
 Page({
   data: {
-    tabAnim: '',
     userInfo: {},
     openid: '',
     hasUserInfo: false,
@@ -25,9 +24,6 @@ Page({
   },
 
   onShow() {
-    const dir = app.tabTransition(3);
-    this.setData({ tabAnim: '' });
-    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     this.loadUserData();
   },
 
@@ -246,7 +242,7 @@ Page({
   onAbout() {
     wx.showModal({
       title: '关于爬宠饲养记',
-      content: 'Version 2.2.0\n\n专为爬宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 科学饲养反馈',
+      content: 'Version 2.3.0\n\n专为异宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 成长相册记录\n• 科学饲养反馈',
       showCancel: false
     });
   }

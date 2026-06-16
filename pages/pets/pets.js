@@ -23,14 +23,10 @@ function arrivalDaysOf(arrivalDate) {
 
 Page({
   data: {
-    tabAnim: '',
     pets: []
   },
 
   onShow() {
-    const dir = app.tabTransition(1);
-    this.setData({ tabAnim: '' });
-    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     this.refreshPetsCache();
   },
 

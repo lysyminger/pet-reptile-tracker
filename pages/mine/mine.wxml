@@ -1,5 +1,5 @@
 <!--pages/mine/mine.wxml - 我的页面-->
-<view class="container {{tabAnim}}">
+<view class="container">
   <!-- 用户信息卡片 -->
   <view class="user-card card">
     <view class="user-header">
@@ -59,6 +59,6 @@
 
   <!-- 版本信息 -->
   <view class="version-info">
-    <text class="version-text">Version 2.2.0</text>
+    <text class="version-text">Version 2.3.0</text>
   </view>
 </view>

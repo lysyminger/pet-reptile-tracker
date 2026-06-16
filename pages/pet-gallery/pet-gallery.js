@@ -28,7 +28,6 @@ function formatDateLabel(date) {
 
 Page({
   data: {
-    tabAnim: '',
     activePetId: '',          // '' = 全部
     petTabs: [],              // [{_id, name, avatar}]，含「全部」
     timeline: [],             // [{date,label,items:[{_id,url,thumb,localThumb,pet_name}]}]
@@ -56,9 +55,6 @@ Page({
   },
 
   onShow() {
-    const dir = app.tabTransition(2);
-    this.setData({ tabAnim: '' });
-    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     // 刷新（相册内容会变，进入时拉一次）
     this.loadPets().then(() => this.loadPhotos());
   },
