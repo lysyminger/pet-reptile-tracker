@@ -86,8 +86,18 @@ function handle_media_check_result(array $data): void {
     db()->prepare('UPDATE user_info SET avatarUrl = ? WHERE avatarUrl = ? AND openid = ?')
         ->execute(['', $mediaUrl, $openid]);
 
+    // 相册：删除引用该图的相册记录（仅限本用户名下的宠物），并删缩略图文件
+    $stmt = db()->prepare(
+        'SELECT ph._id, ph.thumb_url FROM pet_photos ph JOIN pet_info p ON ph.pet_id = p._id WHERE ph.url = ? AND p.user_openid = ?'
+    );
+    $stmt->execute([$mediaUrl, $openid]);
+    foreach ($stmt->fetchAll() as $photo) {
+        db()->prepare('DELETE FROM pet_photos WHERE _id = ?')->execute([$photo['_id']]);
+        if (!empty($photo['thumb_url'])) delete_uploaded_file($photo['thumb_url']);
+    }
+
     delete_uploaded_file($mediaUrl);
-    error_log('[wxcallback] 已清除违规头像 openid=' . $openid . ' url=' . $mediaUrl . ' label=' . $label);
+    error_log('[wxcallback] 已清除违规图片 openid=' . $openid . ' url=' . $mediaUrl . ' label=' . $label);
 }
 
 // 根据对外 URL 反推本地文件路径并删除（仅限本服务 uploads 目录内）

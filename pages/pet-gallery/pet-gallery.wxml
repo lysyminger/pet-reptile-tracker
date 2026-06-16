@@ -1,0 +1,24 @@
+<!--pages/pet-gallery/pet-gallery.wxml - 宠物相册-->
+<view class="container">
+  <view class="grid">
+    <!-- 上传入口 -->
+    <view class="cell add-cell" bindtap="onAddPhoto">
+      <text class="add-plus">+</text>
+      <text class="add-text">添加照片</text>
+    </view>
+
+    <!-- 照片 -->
+    <view class="cell photo-cell" wx:for="{{photos}}" wx:key="_id"
+          bindtap="onPreview" data-url="{{item.url}}"
+          bindlongpress="onLongPress" data-id="{{item._id}}">
+      <image class="photo-img" src="{{item.localThumb}}" mode="aspectFill" lazy-load></image>
+    </view>
+  </view>
+
+  <view class="empty-hint" wx:if="{{!loading && photos.length === 0}}">
+    <text class="empty-icon">📷</text>
+    <text class="empty-text">还没有照片，点「添加照片」记录它的成长吧</text>
+  </view>
+
+  <view class="tip">长按照片可删除 · 图片仅你可见，会经安全审核</view>
+</view>
