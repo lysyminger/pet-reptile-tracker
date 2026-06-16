@@ -25,8 +25,9 @@ Page({
   },
 
   onShow() {
+    const dir = app.tabTransition(3);
     this.setData({ tabAnim: '' });
-    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
+    if (dir) setTimeout(() => this.setData({ tabAnim: dir }), 20);
     this.loadUserData();
   },
 

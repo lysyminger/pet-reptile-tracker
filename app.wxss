@@ -1,11 +1,17 @@
 /* app.wxss - 全局样式 */
 
-/* tab 页切入淡入上滑动画（苹果缓动） */
-@keyframes tabEnter {
-  from { opacity: 0; transform: translateY(20rpx); }
-  to   { opacity: 1; transform: translateY(0); }
+/* tab 切换：按方向横向滑入 + 缓入缓出（接近手机主屏切换） */
+@keyframes tabInRight {
+  from { opacity: 0.6; transform: translateX(64rpx); }
+  to   { opacity: 1;   transform: translateX(0); }
 }
-.tab-enter { animation: tabEnter .3s cubic-bezier(.25, .1, .25, 1); }
+@keyframes tabInLeft {
+  from { opacity: 0.6; transform: translateX(-64rpx); }
+  to   { opacity: 1;   transform: translateX(0); }
+}
+/* cubic-bezier(.4,0,.2,1) = 标准缓入缓出 */
+.tab-in-right { animation: tabInRight .34s cubic-bezier(.4, 0, .2, 1) both; }
+.tab-in-left  { animation: tabInLeft  .34s cubic-bezier(.4, 0, .2, 1) both; }
 
 /* 主题色 */
 page {
