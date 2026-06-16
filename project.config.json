@@ -49,7 +49,16 @@
   "srcMiniprogramRoot": "",
   "compileType": "miniprogram",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "miniprogram" },
+      { "type": "folder", "value": "server" },
+      { "type": "folder", "value": "docs" },
+      { "type": "folder", "value": "databasejson" },
+      { "type": "file", "value": "README.md" },
+      { "type": "file", "value": "CLAUDE.md" },
+      { "type": "file", "value": "OPENID_PERSISTENT.md" },
+      { "type": "file", "value": "test.txt" }
+    ],
     "include": []
   },
   "editorSetting": {
