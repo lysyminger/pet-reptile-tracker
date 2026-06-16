@@ -1,18 +1,5 @@
 /* app.wxss - 全局样式 */
 
-/* tab 切换：按方向横向滑入 + 缓入缓出（接近手机主屏切换） */
-@keyframes tabInRight {
-  from { opacity: 0.6; transform: translateX(64rpx); }
-  to   { opacity: 1;   transform: translateX(0); }
-}
-@keyframes tabInLeft {
-  from { opacity: 0.6; transform: translateX(-64rpx); }
-  to   { opacity: 1;   transform: translateX(0); }
-}
-/* cubic-bezier(.4,0,.2,1) = 标准缓入缓出 */
-.tab-in-right { animation: tabInRight .34s cubic-bezier(.4, 0, .2, 1) both; }
-.tab-in-left  { animation: tabInLeft  .34s cubic-bezier(.4, 0, .2, 1) both; }
-
 /* 主题色 */
 page {
   --primary-color: #4A9C7B;

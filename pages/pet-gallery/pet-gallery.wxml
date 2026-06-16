@@ -1,5 +1,5 @@
 <!--pages/pet-gallery/pet-gallery.wxml - 宠物相册（时间轴 + 高清缩放）-->
-<view class="container {{tabAnim}}">
+<view class="container">
   <!-- 宠物切换 -->
   <scroll-view class="pet-tabs" scroll-x enhanced show-scrollbar="{{false}}">
     <view class="pet-tab {{activePetId === item._id ? 'active' : ''}}"
