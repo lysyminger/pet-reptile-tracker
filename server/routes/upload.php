@@ -13,7 +13,13 @@ function upload_file(): void {
         json_error('仅支持 JPG/PNG/GIF/WebP');
     }
 
-    $dir = __DIR__ . '/../uploads';
+    // 按 openid / 年 / 月 分子目录，避免所有图挤在一个目录、便于维护与备份
+    $openid = (string)($GLOBALS['openid'] ?? '');
+    $safeOpenid = preg_replace('/[^A-Za-z0-9_-]/', '', $openid);
+    if ($safeOpenid === '') $safeOpenid = 'anon';
+    $relDir = $safeOpenid . '/' . date('Y') . '/' . date('m');
+
+    $dir = __DIR__ . '/../uploads/' . $relDir;
     if (!is_dir($dir)) mkdir($dir, 0755, true);
 
     $filename = bin2hex(random_bytes(8)) . '_' . time() . '.' . $ext;
@@ -23,11 +29,12 @@ function upload_file(): void {
         json_error('保存失败', 500);
     }
 
-    $url = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $filename;
+    $prefix = rtrim(env('UPLOAD_URL_PREFIX'), '/');
+    $url = $prefix . '/' . $relDir . '/' . $filename;
 
     // 生成缩略图（相册网格用，秒开）。失败不影响主流程，thumb 回退用原图。
     $thumbName = make_thumbnail($dest, $ext, $dir, $filename);
-    $thumbUrl  = $thumbName ? (rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $thumbName) : $url;
+    $thumbUrl  = $thumbName ? ($prefix . '/' . $relDir . '/' . $thumbName) : $url;
 
     // ============================================================
     // 【内容安全 · 图片检测入口】

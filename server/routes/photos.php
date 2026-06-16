@@ -116,10 +116,19 @@ function photos_delete(string $id): void {
 }
 
 function photos_unlink_by_url(string $url): void {
+    delete_upload_by_url($url, __DIR__ . '/../uploads');
+}
+
+// 由对外 URL 反推本地文件并删除，支持 openid/年/月 子目录；防 .. 越界
+function delete_upload_by_url(string $url, string $uploadsDir): void {
     $prefix = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/';
     if (strncmp($url, $prefix, strlen($prefix)) !== 0) return;
-    $name = basename(substr($url, strlen($prefix)));
-    if ($name === '' || strpbrk($name, "/\\") !== false) return;
-    $path = __DIR__ . '/../uploads/' . $name;
-    if (is_file($path)) @unlink($path);
+    $rel = ltrim(substr($url, strlen($prefix)), '/');
+    if ($rel === '' || strpos($rel, '..') !== false) return;
+    $root = realpath($uploadsDir);
+    if ($root === false) return;
+    $real = realpath($root . '/' . $rel);
+    if ($real !== false && strncmp($real, $root, strlen($root)) === 0 && is_file($real)) {
+        @unlink($real);
+    }
 }

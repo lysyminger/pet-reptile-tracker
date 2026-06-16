@@ -100,12 +100,16 @@ function handle_media_check_result(array $data): void {
     error_log('[wxcallback] 已清除违规图片 openid=' . $openid . ' url=' . $mediaUrl . ' label=' . $label);
 }
 
-// 根据对外 URL 反推本地文件路径并删除（仅限本服务 uploads 目录内）
+// 根据对外 URL 反推本地文件路径并删除（支持 openid/年/月 子目录，防 .. 越界）
 function delete_uploaded_file(string $url): void {
     $prefix = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/';
     if (strncmp($url, $prefix, strlen($prefix)) !== 0) return;
-    $name = basename(substr($url, strlen($prefix)));
-    if ($name === '' || strpbrk($name, "/\\") !== false) return;
-    $path = __DIR__ . '/../uploads/' . $name;
-    if (is_file($path)) @unlink($path);
+    $rel = ltrim(substr($url, strlen($prefix)), '/');
+    if ($rel === '' || strpos($rel, '..') !== false) return;
+    $root = realpath(__DIR__ . '/../uploads');
+    if ($root === false) return;
+    $real = realpath($root . '/' . $rel);
+    if ($real !== false && strncmp($real, $root, strlen($root)) === 0 && is_file($real)) {
+        @unlink($real);
+    }
 }
