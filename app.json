@@ -6,7 +6,8 @@
     "pages/mine/mine",
     "pages/add-pet/add-pet",
     "pages/weight-record/weight-record",
-    "pages/avatar-cropper/avatar-cropper"
+    "pages/avatar-cropper/avatar-cropper",
+    "pages/pet-gallery/pet-gallery"
   ],
   "window": {
     "backgroundTextStyle": "light",

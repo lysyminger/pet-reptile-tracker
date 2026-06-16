@@ -429,6 +429,10 @@ Page({
     });
   },
 
+  onGallery() {
+    wx.navigateTo({ url: `/pages/pet-gallery/pet-gallery?id=${this.data.petId}` });
+  },
+
   // 预览宠物头像
   onPreviewAvatar() {
     const avatarUrl = this.data.petInfo.avatar || '/assets/images/default-pet.svg';

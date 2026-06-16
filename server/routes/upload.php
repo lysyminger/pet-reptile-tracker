@@ -5,7 +5,7 @@ function upload_file(): void {
     if (empty($_FILES['file'])) json_error('缺少 file 字段');
     $f = $_FILES['file'];
     if ($f['error'] !== UPLOAD_ERR_OK) json_error('上传失败 code=' . $f['error']);
-    if ($f['size'] > 5 * 1024 * 1024) json_error('文件过大，最大 5MB');
+    if ($f['size'] > 12 * 1024 * 1024) json_error('文件过大，最大 12MB');
 
     // 用文件头魔数（magic bytes）识别图片类型，不依赖 fileinfo 扩展
     $ext = detect_image_ext($f['tmp_name']);
@@ -25,15 +25,58 @@ function upload_file(): void {
 
     $url = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $filename;
 
+    // 生成缩略图（相册网格用，秒开）。失败不影响主流程，thumb 回退用原图。
+    $thumbName = make_thumbnail($dest, $ext, $dir, $filename);
+    $thumbUrl  = $thumbName ? (rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $thumbName) : $url;
+
     // ============================================================
     // 【内容安全 · 图片检测入口】
-    // 所有用户上传的图片（头像等 UGC）都经过此处，统一提交微信
+    // 所有用户上传的图片（头像 / 相册等 UGC）都经过此处，统一提交微信
     // media_check_async 异步检测。异步特性决定图片会先展示，结果由
     // /wx/callback 接收，若 risky 再由回调清除。提交失败不阻断上传。
     // ============================================================
     submit_media_check($url, $GLOBALS['openid'] ?? '');
 
-    json_ok(['url' => $url]);
+    json_ok(['url' => $url, 'thumb' => $thumbUrl]);
+}
+
+// 生成最长边 <= $maxDim 的缩略图（统一存为 jpg），返回缩略图文件名或 null
+function make_thumbnail(string $srcPath, string $ext, string $dir, string $origName, int $maxDim = 400): ?string {
+    if (!function_exists('imagecreatetruecolor')) return null;
+    @ini_set('memory_limit', '256M');
+
+    $src = null;
+    switch ($ext) {
+        case 'jpg':  $src = @imagecreatefromjpeg($srcPath); break;
+        case 'png':  $src = @imagecreatefrompng($srcPath);  break;
+        case 'gif':  $src = @imagecreatefromgif($srcPath);  break;
+        case 'webp': if (function_exists('imagecreatefromwebp')) $src = @imagecreatefromwebp($srcPath); break;
+    }
+    if (!$src) return null;
+
+    $w = imagesx($src); $h = imagesy($src);
+    if ($w <= 0 || $h <= 0) { imagedestroy($src); return null; }
+
+    // 已经够小就不缩，直接拿原图当缩略图（返回 null，调用方回退用原图）
+    if (max($w, $h) <= $maxDim) { imagedestroy($src); return null; }
+
+    $scale = $maxDim / max($w, $h);
+    $nw = max(1, (int)round($w * $scale));
+    $nh = max(1, (int)round($h * $scale));
+
+    $dst = imagecreatetruecolor($nw, $nh);
+    // 白底（jpg 不支持透明，避免 png 透明区变黑）
+    $white = imagecolorallocate($dst, 255, 255, 255);
+    imagefilledrectangle($dst, 0, 0, $nw, $nh, $white);
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+
+    $base = pathinfo($origName, PATHINFO_FILENAME);
+    $thumbName = $base . '_thumb.jpg';
+    $ok = imagejpeg($dst, $dir . '/' . $thumbName, 82);
+
+    imagedestroy($src);
+    imagedestroy($dst);
+    return $ok ? $thumbName : null;
 }
 
 // 提交图片内容安全检测（微信 media_check_async），并把 trace_id 记入 media_check 表供回调匹配

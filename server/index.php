@@ -53,6 +53,10 @@ $routes = [
     ['DELETE', '#^/substrate-logs/([\w-]+)$#',  'substrate.php', 'substrate_delete'],
 
     ['POST',   '#^/uploads$#',               'upload.php',    'upload_file'],
+
+    ['GET',    '#^/pet-photos$#',            'photos.php',    'photos_list'],
+    ['POST',   '#^/pet-photos$#',            'photos.php',    'photos_create'],
+    ['DELETE', '#^/pet-photos/([\w-]+)$#',   'photos.php',    'photos_delete'],
 ];
 
 // 免鉴权的公开 endpoint（登录、微信回调）——其余一律走 JWT

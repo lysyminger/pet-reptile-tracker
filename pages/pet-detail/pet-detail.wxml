@@ -45,6 +45,10 @@
       <text class="action-icon">⚖️</text>
       <text class="action-text">记录体重</text>
     </view>
+    <view class="action-btn" bindtap="onGallery">
+      <text class="action-icon">📷</text>
+      <text class="action-text">相册</text>
+    </view>
   </view>
 
   <!-- 下次提醒 -->
