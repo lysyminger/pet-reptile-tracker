@@ -22,6 +22,10 @@ $method = $_SERVER['REQUEST_METHOD'];
 $routes = [
     ['POST',   '#^/auth/login$#',            'auth.php',      'auth_login'],
 
+    // 微信消息推送回调（内容安全异步结果）：GET 校验 URL，POST 收推送
+    ['GET',    '#^/wx/callback$#',           'wxcallback.php', 'wx_callback'],
+    ['POST',   '#^/wx/callback$#',           'wxcallback.php', 'wx_callback'],
+
     ['GET',    '#^/user$#',                  'user.php',      'user_get'],
     ['POST',   '#^/user$#',                  'user.php',      'user_upsert'],
 
@@ -51,13 +55,18 @@ $routes = [
     ['POST',   '#^/uploads$#',               'upload.php',    'upload_file'],
 ];
 
+// 免鉴权的公开 endpoint（登录、微信回调）——其余一律走 JWT
+$PUBLIC_ROUTES = [
+    '#^/auth/login$#',
+    '#^/wx/callback$#',
+];
+
 foreach ($routes as [$m, $pattern, $file, $func]) {
     if ($m !== $method) continue;
     if (preg_match($pattern, $path, $matches)) {
         require __DIR__ . '/routes/' . $file;
 
-        // /auth/login 是唯一不需要鉴权的 endpoint
-        if ($pattern !== '#^/auth/login$#') {
+        if (!in_array($pattern, $PUBLIC_ROUTES, true)) {
             $GLOBALS['openid'] = require_auth(); // 401 时内部直接 exit
         }
 

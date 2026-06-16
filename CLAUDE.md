@@ -30,6 +30,7 @@ MySQL database `pet_reptile`, accessed via the REST API (never directly from the
 | `weight_logs` | Weight measurements | `_id`, `pet_id`, `weight`, `record_date` |
 | `substrate_logs` | Substrate changes | `_id`, `pet_id`, `change_date`, `sub_type` |
 | `user_info` | User profiles | `openid` (pk), `nickname`, `avatarUrl` |
+| `media_check` | Image content-security audit records | `trace_id` (pk), `openid`, `media_url`, `status` (pending/pass/risky), `label` |
 
 `_id` values are kept as VARCHAR(32) (UUID-style) so original IDs from the WeChat Cloud Development era can be preserved during migration. `created_at` is auto-populated by MySQL `CURRENT_TIMESTAMP` — never sent from the client.
 
@@ -61,11 +62,13 @@ MySQL database `pet_reptile`, accessed via the REST API (never directly from the
 
 The PHP backend lives in [`server/`](server/) in this repo and is deployed to Alibaba Cloud ECS (managed via 宝塔/BT panel). It is framework-less, hand-rolled PHP (no Composer, no dependencies):
 
-- **`server/index.php`** — single front controller. All `/api/*` requests hit it; a flat `$routes` table `[METHOD, regex, file, handler]` dispatches to `routes/*.php`. `/auth/login` is the **only** unauthenticated endpoint — every other route calls `require_auth()` first, which sets `$GLOBALS['openid']`.
+- **`server/index.php`** — single front controller. All `/api/*` requests hit it; a flat `$routes` table `[METHOD, regex, file, handler]` dispatches to `routes/*.php`. Unauthenticated endpoints are listed in `$PUBLIC_ROUTES` (`/auth/login` and the WeChat callback `/wx/callback`); every other route calls `require_auth()` first, which sets `$GLOBALS['openid']`.
 - **`server/config.php`** — parses `server/.env` (no dotenv lib) into an `env()` helper; installs JSON-only error/exception handlers so 500s never leak stack traces.
-- **`server/lib/`** — `db.php` (singleton PDO over MySQL, `new_id()` for 32-hex UUIDs), `auth.php` (HS256 JWT sign/verify + `jscode2session`), `response.php` (`json_ok`/`json_error`, `request_body()`, and **`assert_pet_owned($petId, $openid)`** — the per-log ownership guard).
-- **`server/routes/`** — one file per resource (pets, feed, weight, substrate, user, upload, auth).
-- **`server/.env.example`** — config template; copy to `server/.env` on the server (never committed — see `.gitignore`).
+- **`server/lib/`** — `db.php` (singleton PDO over MySQL, `new_id()` for 32-hex UUIDs), `auth.php` (HS256 JWT sign/verify + `jscode2session`), `response.php` (`json_ok`/`json_error`, `request_body()`, and **`assert_pet_owned($petId, $openid)`** — the per-log ownership guard), `wxapi.php` (WeChat open-API helpers: file-cached `access_token`, `wx_media_check_async`, `wx_msg_sec_check`).
+- **`server/routes/`** — one file per resource (pets, feed, weight, substrate, user, upload, auth, plus `wxcallback.php` for the message-push callback).
+- **`server/.env.example`** — config template; copy to `server/.env` on the server (never committed — see `.gitignore`). Includes `WX_MSG_TOKEN` for the content-security callback.
+
+**Content security (内容安全)**: WeChat requires UGC to pass content-security APIs or审核 will reject. Uploaded images are submitted to `media_check_async` from `upload_file` (the single upload chokepoint); the `trace_id` is recorded in `media_check`. WeChat pushes the async result (within 30 min) to `POST /wx/callback`, handled by `wxcallback.php` — on `suggest==risky` it nulls any `pet_info.avatar`/`user_info.avatarUrl` matching that URL and deletes the file. Text checks (`wx_msg_sec_check` for nickname/pet name) are wired in `wxapi.php` but **not yet enforced** in routes. `access_token` is cached in `server/cache/` (gitignored, must be `www`-writable).
 
 **Auth flow**: `wx.login` code → `POST /auth/login` → `jscode2session` → `openid` → JWT signed with `JWT_SECRET` (HS256, server-issued, 30-day exp). The client stores the token; the server re-derives `openid` from the JWT on every request.
 

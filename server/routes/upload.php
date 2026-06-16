@@ -24,7 +24,30 @@ function upload_file(): void {
     }
 
     $url = rtrim(env('UPLOAD_URL_PREFIX'), '/') . '/' . $filename;
+
+    // 内容安全：把刚上传的图片提交微信异步检测（结果 30 分钟内推送到 /wx/callback）。
+    // 异步性质决定了图片会先展示，若推送结果为 risky 再由回调清除。检测提交失败不阻断上传。
+    submit_media_check($url, $GLOBALS['openid'] ?? '');
+
     json_ok(['url' => $url]);
+}
+
+// 提交图片内容安全检测，并把 trace_id 记入 media_check 表供回调匹配
+function submit_media_check(string $url, string $openid): void {
+    if ($openid === '') return;
+    require_once __DIR__ . '/../lib/wxapi.php';
+
+    $traceId = wx_media_check_async($url, $openid, 1);
+    if ($traceId === null) return; // 提交失败已在 wxapi 内记日志
+
+    try {
+        $stmt = db()->prepare(
+            'INSERT INTO media_check (trace_id, openid, media_url, scene, status) VALUES (?, ?, ?, 1, ?)'
+        );
+        $stmt->execute([$traceId, $openid, $url, 'pending']);
+    } catch (Throwable $e) {
+        error_log('[upload] 写 media_check 失败: ' . $e->getMessage());
+    }
 }
 
 // 读前 12 字节匹配图片格式签名，返回扩展名或 null

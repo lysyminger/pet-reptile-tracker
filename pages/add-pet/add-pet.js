@@ -80,6 +80,8 @@ Page({
       if (res && res.url) {
         this.uploadedAvatarUrl = res.url;
         this.setData({ avatarUrl: res.url });
+        // 头像会经微信内容安全异步审核，若含违规内容稍后会被自动移除
+        wx.showToast({ title: '上传成功，审核中', icon: 'none' });
       }
     } catch (err) {
       console.error('上传头像失败:', err);
