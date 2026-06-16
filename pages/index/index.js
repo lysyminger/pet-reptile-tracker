@@ -7,6 +7,7 @@ const imageCache = require('../../utils/imageCache.js');
 
 Page({
   data: {
+    tabAnim: '',
     currentDate: '',
     weekday: '',
     weather: '',
@@ -39,9 +40,26 @@ Page({
   },
 
   onShow() {
-    // 强制刷新，不使用缓存
-    this.refreshTodayData();
+    // tab 切入淡入动画
+    this.setData({ tabAnim: '' });
+    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
+
+    // 优先用今日快照缓存（60s）：切 tab 时秒显、不查库；过期或刚打卡才刷新
+    this.renderTodaySmart();
     this.loadRecentPhotos();
+  },
+
+  // 命中今日快照则直接渲染（零网络）；否则刷新
+  async renderTodaySmart() {
+    const today = app.formatDate(new Date());
+    const snap = cache.getCache('today');
+    if (snap && snap.date === today && snap.view) {
+      this.setData(snap.view);
+      return;
+    }
+    // 快照缺失：若宠物缓存还在则静默刷新（无 loading），否则冷启动显示 loading
+    const silent = !!cache.getCache('pets');
+    await this.refreshTodayData(silent);
   },
 
   // 首页「成长相册」最近几张缩略图（走本地缓存，不重复拉服务器）
@@ -65,7 +83,7 @@ Page({
   },
 
   onOpenGallery() {
-    wx.navigateTo({ url: '/pages/pet-gallery/pet-gallery' });
+    wx.switchTab({ url: '/pages/pet-gallery/pet-gallery' });
   },
 
   // 初始化日期
@@ -117,33 +135,35 @@ Page({
     }
   },
 
-  // 强制刷新今日数据
-  async refreshTodayData() {
-    wx.showLoading({ title: '刷新中...' });
+  // 刷新今日数据。silent=true 时不显示 loading（用缓存快速刷新）
+  async refreshTodayData(silent) {
+    if (!silent) wx.showLoading({ title: '加载中...' });
     try {
-      const pets = await this.refreshPetsCache();
+      const pets = await this.getPetsWithCache();
       const todoList = this.calculateTodoList(pets);
 
-      const recentRecords = await this.fetchRecentRecords(pets);
-      cache.setCache('history', recentRecords);
+      const recentRecords = await this.getRecentRecordsWithCache(pets);
 
       const todoCount = todoList.length;
       const completedCount = await this.getTodayCompletedCount(pets);
       const relaxInfo = todoCount === 0 ? this.calculateRelaxInfo(pets) : null;
 
-      this.setData({
+      const view = {
         petsCount: pets.length,
         todoList,
         todoCount,
         completedCount,
         recentRecords,
         relaxInfo
-      });
+      };
+      this.setData(view);
+      // 存今日快照，60s 内切 tab 直接复用、不再查库
+      cache.setCache('today', { date: app.formatDate(new Date()), view });
     } catch (err) {
       console.error('刷新数据失败:', err);
-      wx.showToast({ title: '刷新失败', icon: 'none' });
+      if (!silent) wx.showToast({ title: '加载失败', icon: 'none' });
     } finally {
-      wx.hideLoading();
+      if (!silent) wx.hideLoading();
     }
   },
 
@@ -403,12 +423,13 @@ Page({
       cache.removeCache('pets');
       cache.removeCache('schedule');
       cache.removeCache('history');
+      cache.removeCache('today');
 
       wx.hideLoading();
       wx.showToast({ title: '打卡成功', icon: 'success' });
       this.closeModal();
 
-      await this.loadTodayData();
+      await this.refreshTodayData();
     } catch (err) {
       wx.hideLoading();
       console.error('打卡失败:', err);

@@ -12,6 +12,7 @@ function toLocalDay(s) {
 
 Page({
   data: {
+    tabAnim: '',
     userInfo: {},
     openid: '',
     hasUserInfo: false,
@@ -24,6 +25,8 @@ Page({
   },
 
   onShow() {
+    this.setData({ tabAnim: '' });
+    setTimeout(() => this.setData({ tabAnim: 'tab-enter' }), 20);
     this.loadUserData();
   },
 

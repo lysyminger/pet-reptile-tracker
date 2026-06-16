@@ -231,6 +231,7 @@ Page({
       }
 
       cache.removeCache('pets');
+      cache.removeCache('today');
 
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
@@ -257,6 +258,7 @@ Page({
             cache.removeCache('schedule');
             cache.removeCache('weight');
             cache.removeCache('history');
+            cache.removeCache('today');
 
             wx.showToast({ title: '已删除', icon: 'success' });
             setTimeout(() => wx.navigateBack(), 1500);

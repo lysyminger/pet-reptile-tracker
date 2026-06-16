@@ -1,5 +1,5 @@
 <!--pages/index/index.wxml - 首页-->
-<view class="container">
+<view class="container {{tabAnim}}">
   <!-- 日期头部 -->
   <view class="header">
     <view class="date-info">

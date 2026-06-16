@@ -161,6 +161,7 @@ Page({
       cache.removeCache('weight');
       cache.removeCache('history');
       cache.removeCache('schedule');
+      cache.removeCache('today');
 
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
@@ -201,6 +202,7 @@ Page({
           cache.removeCache('schedule');
           cache.removeCache('weight');
           cache.removeCache('history');
+          cache.removeCache('today');
 
           wx.hideLoading();
           wx.showToast({ title: '删除成功', icon: 'success' });
