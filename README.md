@@ -265,6 +265,7 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 - 🗂️ 图片存储按 `uploads/<openid>/<年>/<月>/` 分目录，便于维护与备份
 - 🛡️ 相册图片同样接入 `media_check_async` 内容安全，违规由回调自动清除
 - ⚡ 今日页 60s 快照缓存，切 Tab 不再每次查库
+- 🚀 启动性能优化：开启按需注入(`lazyCodeLoading`)，`packOptions.ignore` 排除 server/docs/databasejson/脚手架，主包从 ~1.5M 降至约 300K
 
 ### v2.2.0 — 头像圆形裁剪 & 养宠天数
 - 🖼️ 上传头像新增裁剪页（`pages/avatar-cropper/`）：Canvas 2D + 自处理拖动 / 双指缩放，圆形裁剪框，导出圆形 PNG
