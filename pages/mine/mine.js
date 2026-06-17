@@ -2,14 +2,6 @@
 const app = getApp();
 const api = require('../../utils/api.js');
 
-// 取 "YYYY-MM-DD" 或 "YYYY-MM-DD HH:MM:SS" 中的年月日，构造本地零点（避免时区差一天）
-function toLocalDay(s) {
-  if (!s) return null;
-  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
 Page({
   data: {
     userInfo: {},
@@ -144,7 +136,7 @@ Page({
       let daysCount = 0;
       if (petsArr.length > 0) {
         const days = petsArr
-          .map(p => toLocalDay(p.arrivalDate) || toLocalDay(p.created_at))
+          .map(p => app.toLocalDay(p.arrivalDate) || app.toLocalDay(p.created_at))
           .filter(Boolean);
         if (days.length > 0) {
           const earliest = days.reduce((a, b) => (a < b ? a : b));
@@ -242,7 +234,7 @@ Page({
   onAbout() {
     wx.showModal({
       title: '关于爬宠饲养记',
-      content: 'Version 2.3.0\n\n专为异宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 成长相册记录\n• 科学饲养反馈',
+      content: 'Version 2.3.1\n\n专为异宠玩家设计的轻量级饲养记录工具。\n\n核心价值：\n• 动态顺延日程\n• 体重成长可视化\n• 成长相册记录\n• 科学饲养反馈',
       showCancel: false
     });
   }

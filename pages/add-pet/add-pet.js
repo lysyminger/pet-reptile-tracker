@@ -230,8 +230,7 @@ Page({
         await api.post('/pets', petData);
       }
 
-      cache.removeCache('pets');
-      cache.removeCache('today');
+      cache.invalidatePetRelatedCache();
 
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
@@ -254,11 +253,7 @@ Page({
           try {
             await api.del('/pets/' + this.data.petId);
 
-            cache.removeCache('pets');
-            cache.removeCache('schedule');
-            cache.removeCache('weight');
-            cache.removeCache('history');
-            cache.removeCache('today');
+            cache.invalidatePetRelatedCache();
 
             wx.showToast({ title: '已删除', icon: 'success' });
             setTimeout(() => wx.navigateBack(), 1500);

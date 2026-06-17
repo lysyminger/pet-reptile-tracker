@@ -52,6 +52,10 @@ $routes = [
     ['POST',   '#^/substrate-logs$#',           'substrate.php', 'substrate_create'],
     ['DELETE', '#^/substrate-logs/([\w-]+)$#',  'substrate.php', 'substrate_delete'],
 
+    // 打卡原子接口：一个事务里完成「写日志 + 更新下次计划日期」
+    ['POST',   '#^/check-ins/feed$#',         'checkin.php',   'checkin_feed'],
+    ['POST',   '#^/check-ins/substrate$#',    'checkin.php',   'checkin_substrate'],
+
     ['POST',   '#^/uploads$#',               'upload.php',    'upload_file'],
 
     ['GET',    '#^/pet-photos$#',            'photos.php',    'photos_list'],

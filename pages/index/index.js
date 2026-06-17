@@ -238,10 +238,10 @@ Page({
 
   // 获取最近记录（带缓存）
   async getRecentRecordsWithCache(pets) {
-    const cached = cache.getCache('history');
+    const cached = cache.getCache('recentHistory');
     if (cached) return cached;
     const records = await this.fetchRecentRecords(pets);
-    cache.setCache('history', records);
+    cache.setCache('recentHistory', records);
     return records;
   },
 
@@ -382,6 +382,7 @@ Page({
     wx.showLoading({ title: '打卡中...' });
 
     try {
+      // 原子接口：写日志 + 更新下次计划日期在后端一个事务里完成
       if (currentTaskType === 'feed') {
         const foodType = customFood || selectedFood;
         if (!foodType) {
@@ -389,36 +390,22 @@ Page({
           wx.showToast({ title: '请选择食物种类', icon: 'none' });
           return;
         }
-
-        await this.addFeedRecord(currentPetId, feedDate, foodType, feedAmount);
-
-        const pet = await this.getPet(currentPetId);
-        if (!pet.feed_interval || isNaN(parseInt(pet.feed_interval))) {
-          wx.hideLoading();
-          wx.showToast({ title: '宠物喂食频率设置无效', icon: 'none' });
-          return;
-        }
-        const nextDate = app.dateAdd(feedDate, pet.feed_interval);
-        await this.updatePet(currentPetId, { next_feed_date: nextDate });
+        await api.post('/check-ins/feed', {
+          pet_id: currentPetId,
+          feed_date: feedDate,
+          food_type: foodType,
+          amount: feedAmount || ''
+        });
       } else {
         const subType = customSubstrate || selectedSubstrate;
-
-        await this.addSubstrateRecord(currentPetId, feedDate, subType);
-
-        const pet = await this.getPet(currentPetId);
-        if (!pet.sub_interval || isNaN(parseInt(pet.sub_interval))) {
-          wx.hideLoading();
-          wx.showToast({ title: '宠物垫材频率设置无效', icon: 'none' });
-          return;
-        }
-        const nextDate = app.dateAdd(feedDate, pet.sub_interval);
-        await this.updatePet(currentPetId, { next_sub_date: nextDate });
+        await api.post('/check-ins/substrate', {
+          pet_id: currentPetId,
+          change_date: feedDate,
+          sub_type: subType || ''
+        });
       }
 
-      cache.removeCache('pets');
-      cache.removeCache('schedule');
-      cache.removeCache('history');
-      cache.removeCache('today');
+      cache.invalidatePetRelatedCache();
 
       wx.hideLoading();
       wx.showToast({ title: '打卡成功', icon: 'success' });
@@ -430,30 +417,5 @@ Page({
       console.error('打卡失败:', err);
       wx.showToast({ title: '打卡失败', icon: 'none' });
     }
-  },
-
-  addFeedRecord(petId, date, foodType, amount) {
-    return api.post('/feed-logs', {
-      pet_id: petId,
-      feed_date: date,
-      food_type: foodType,
-      amount: amount || ''
-    });
-  },
-
-  addSubstrateRecord(petId, date, subType) {
-    return api.post('/substrate-logs', {
-      pet_id: petId,
-      change_date: date,
-      sub_type: subType || ''
-    });
-  },
-
-  getPet(petId) {
-    return api.get('/pets/' + petId);
-  },
-
-  updatePet(petId, data) {
-    return api.put('/pets/' + petId, data);
   }
 });

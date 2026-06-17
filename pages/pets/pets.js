@@ -4,17 +4,9 @@ const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
 const cats = require('../../utils/petCategories.js');
 
-// 取 "YYYY-MM-DD" 的年月日构造本地零点（避免时区差一天）
-function toLocalDay(s) {
-  if (!s) return null;
-  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
 // 到家天数：到家当天记为第 1 天；没填到家日期返回 null
 function arrivalDaysOf(arrivalDate) {
-  const day = toLocalDay(arrivalDate);
+  const day = app.toLocalDay(arrivalDate);
   if (!day) return null;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

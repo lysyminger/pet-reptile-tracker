@@ -4,11 +4,12 @@
  * 缓存配置（毫秒）
  */
 const CACHE_CONFIG = {
-  pets: 10 * 60 * 1000,      // 宠物列表 10 分钟
-  schedule: 5 * 60 * 1000,   // 日程数据 5 分钟
-  weight: 30 * 60 * 1000,    // 体重记录 30 分钟
-  history: 15 * 60 * 1000,   // 历史记录 15 分钟
-  today: 60 * 1000           // 今日页快照 60 秒（避免切 tab 反复查库）
+  pets: 10 * 60 * 1000,           // 宠物列表 10 分钟
+  schedule: 5 * 60 * 1000,        // 日程数据 5 分钟
+  weight: 30 * 60 * 1000,         // 体重记录（按 petId 分组的对象）30 分钟
+  recentHistory: 15 * 60 * 1000,  // 首页「最近记录」——数组 15 分钟
+  petHistory: 15 * 60 * 1000,     // 详情页历史记录——按 petId 分组的对象 15 分钟
+  today: 60 * 1000                // 今日页快照 60 秒（避免切 tab 反复查库）
 };
 
 /**
@@ -96,6 +97,19 @@ function clearAllCache() {
 }
 
 /**
+ * 统一失效「宠物相关」的所有缓存。
+ * 任何写入/删除打卡、体重、宠物资料的操作后调用，避免到处手写一堆 removeCache。
+ */
+function invalidatePetRelatedCache() {
+  removeCache('pets');
+  removeCache('schedule');
+  removeCache('weight');
+  removeCache('recentHistory');
+  removeCache('petHistory');
+  removeCache('today');
+}
+
+/**
  * 获取缓存统计信息
  * @returns {Object} 缓存统计
  */
@@ -132,6 +146,7 @@ module.exports = {
   getCache,
   setCache,
   removeCache,
+  invalidatePetRelatedCache,
   clearAllCache,
   getCacheStats
 };

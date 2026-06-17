@@ -4,11 +4,21 @@ const cache = require('../../utils/cache.js');
 const api = require('../../utils/api.js');
 const cats = require('../../utils/petCategories.js');
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatSigned(value) {
+  const n = Number(value) || 0;
+  return `${n > 0 ? '+' : ''}${Math.round(n * 10) / 10}g`;
+}
+
 Page({
   data: {
     petId: '',
     petInfo: {},
     weightRecords: [],
+    displayWeightRecords: [],
     historyRecords: [],
     nextFeedDate: '',
     nextSubDate: '',
@@ -21,15 +31,29 @@ Page({
     chartHeight: 400,
     chartContainerWidth: 600,  // 图表容器宽度，根据数据点动态计算
     canvasInstance: null,
-    isSyncingScroll: false,  // 防止滚动同步死循环
     chartScrollLeft: 0,  // 图表滚动位置
-    tableScrollLeft: 0,   // 日期表滚动位置
-    chartDataPoints: []   // 图表数据点位置（用于日期条对齐）
+    chartRange: 'all',
+    chartRangeOptions: [
+      { key: 'all', label: '全部' },
+      { key: '30', label: '30天' },
+      { key: '90', label: '90天' },
+      { key: 'year', label: '今年' }
+    ],
+    chartRecordText: '0 条记录',
+    chartInsight: '',
+    chartTooltip: {
+      visible: false,
+      left: 0,
+      top: 0,
+      date: '',
+      weight: '',
+      deltaText: '',
+      intervalText: ''
+    },
+    selectedChartIndex: -1
   },
 
   onLoad(options) {
-    console.log('详情页 onLoad options:', options);
-    
     if (options && options.id) {
       this.setData({ petId: options.id });
       this.loadPetDetail();
@@ -39,32 +63,18 @@ Page({
     }
   },
 
-  // 数据加载完成后检查 Canvas（已废弃，使用 setData 回调）
-  // checkCanvas() { ... },
-
-  onReady() {
-    // Canvas 已在 setData 回调中初始化，这里不需要做任何事
-  },
-
   // 初始化 Canvas（在 setData 回调中调用，确保 DOM 已渲染）
   initCanvas() {
-    console.log('initCanvas 执行，weightRecords:', this.data.weightRecords.length);
-
     // 如果没有数据，不初始化 Canvas
-    if (this.data.weightRecords.length === 0) {
-      console.log('暂无体重记录，跳过 Canvas 初始化');
-      return;
-    }
+    if (this.data.displayWeightRecords.length === 0) return;
 
     // 使用动态计算的图表宽度
     const dynamicWidth = this.data.chartContainerWidth;
 
-    // 直接查询 Canvas，不需要 setTimeout
     const query = wx.createSelectorQuery();
     query.select('#weightChart')
       .fields({ node: true, size: true })
       .exec((res) => {
-        console.log('Canvas 查询结果:', res);
         if (res[0] && res[0].node) {
           const canvas = res[0].node;
           const ctx = canvas.getContext('2d');
@@ -72,8 +82,6 @@ Page({
 
           const width = dynamicWidth;
           const height = 400;
-
-          console.log('Canvas 尺寸:', { width, height, dpr });
 
           // 设置画布尺寸
           canvas.width = width * dpr;
@@ -84,16 +92,12 @@ Page({
             chartHeight: height,
             canvasInstance: canvas
           }, () => {
-            console.log('Canvas 实例已设置，宽度:', this.data.chartWidth);
-
-            // 绘制图表
-            if (this.data.weightRecords.length > 0) {
-              console.log('绘制图表，记录数:', this.data.weightRecords.length);
-              this.drawWeightChart(this.data.weightRecords);
+            if (this.data.displayWeightRecords.length > 0) {
+              this.drawWeightChart(this.data.displayWeightRecords, this.data.selectedChartIndex);
             }
           });
         } else {
-          console.error('❌ Canvas 节点未找到，res:', res);
+          console.error('Canvas 节点未找到，res:', res);
         }
       });
   },
@@ -122,26 +126,8 @@ Page({
       const hasFeedSchedule = !!petInfo.next_feed_date;
       const hasSubSchedule = !!petInfo.next_sub_date;
 
-      console.log('体重数据:', {
-        earliestWeight,
-        latestWeight,
-        petInfoInitialWeight: petInfo.initialWeight,
-        weightRecordsCount: weightRecords.length,
-        currentWeight
-      });
-
-      // 设置数据，在回调中初始化 Canvas（确保 DOM 已渲染）
-      // 注意：weightRecords 保持降序（最新在前），但在 drawWeightChart 中会反转用于绘图
-      // 日期对照表显示全部记录，按时间正序（从左到右 = 从早到晚）
-      const chartContainerWidth = Math.max(600, weightRecords.length * 100);  // 每个数据点至少 100px 宽度，最少 600px
-
-      // 计算图表中每个数据点的 X 位置（用于日期条对齐）
-      // Canvas 内图表区域有 padding: left=60, right=40
-      const padding = { left: 60, right: 40 };
-      const chartInnerWidth = chartContainerWidth - padding.left - padding.right;
-      const chartDataPoints = weightRecords.map((_, index) => ({
-        position: padding.left + (index * chartInnerWidth) / (weightRecords.length > 1 ? weightRecords.length - 1 : 1)
-      }));
+      const ascendingWeightRecords = weightRecords.slice().reverse();
+      const chartState = this.buildChartState(ascendingWeightRecords, this.data.chartRange);
 
       const tmpl = cats.getCategory(petInfo.category);
 
@@ -151,8 +137,12 @@ Page({
         showSub: !!tmpl.modules.substrate,
         subLabel: tmpl.subLabel || '更换',
         subShort: tmpl.subShort || '垫材',
-        weightRecords: weightRecords.slice().reverse(),  // 反转为正序，最早的在前
-        chartDataPoints,  // 图表数据点位置
+        weightRecords: ascendingWeightRecords,
+        displayWeightRecords: chartState.records,
+        chartRecordText: chartState.recordText,
+        chartInsight: chartState.insight,
+        chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
+        selectedChartIndex: -1,
         historyRecords,
         nextFeedDate: petInfo.next_feed_date || '',
         nextSubDate: petInfo.next_sub_date || '',
@@ -163,12 +153,10 @@ Page({
         initialWeight,
         currentWeight,
         weightGain: currentWeight - initialWeight,
-        chartContainerWidth  // 设置图表容器宽度
+        chartContainerWidth: chartState.width
       }, () => {
-        console.log('setData 完成，DOM 已渲染');
-        // 在 setData 回调中初始化 Canvas，确保 100% 渲染完成
-        if (this.data.weightRecords.length > 0) {
-          console.log('有体重记录，初始化 Canvas');
+        // 在 setData 回调中初始化 Canvas，确保 DOM 渲染完成
+        if (this.data.displayWeightRecords.length > 0) {
           this.initCanvas();
         }
       });
@@ -185,16 +173,10 @@ Page({
     const cached = cache.getCache('pets');
     if (cached && cached.length > 0) {
       const pet = cached.find(p => p._id === this.data.petId);
-      if (pet) {
-        console.log('宠物信息：使用缓存');
-        return pet;
-      }
+      if (pet) return pet;
     }
-    
     // 缓存失效，从数据库读取
-    console.log('宠物信息：缓存失效，从数据库读取');
-    const pet = await this.fetchPetInfo();
-    return pet;
+    return this.fetchPetInfo();
   },
   
   // 从后端获取宠物信息
@@ -209,12 +191,9 @@ Page({
   async getWeightRecordsWithCache() {
     const cached = cache.getCache('weight');
     if (cached && cached[this.data.petId]) {
-      console.log('体重记录：使用缓存');
       return cached[this.data.petId];
     }
-    
     // 缓存失效，从数据库读取
-    console.log('体重记录：缓存失效，从数据库读取');
     const records = await this.fetchWeightRecords();
     
     // 写入缓存（按宠物 ID 存储）
@@ -236,23 +215,20 @@ Page({
     });
   },
   
-  // 获取历史记录（带缓存）
+  // 获取历史记录（带缓存）。详情页缓存语义：按 petId 分组的对象，存 petHistory。
   async getHistoryRecordsWithCache() {
-    const cached = cache.getCache('history');
+    const cached = cache.getCache('petHistory');
     if (cached && cached[this.data.petId]) {
-      console.log('历史记录：使用缓存');
       return cached[this.data.petId];
     }
-    
     // 缓存失效，从数据库读取
-    console.log('历史记录：缓存失效，从数据库读取');
     const records = await this.fetchHistoryRecords();
-    
+
     // 写入缓存（按宠物 ID 存储）
     const historyCache = cached || {};
     historyCache[this.data.petId] = records;
-    cache.setCache('history', historyCache);
-    
+    cache.setCache('petHistory', historyCache);
+
     return records;
   },
   
@@ -279,18 +255,157 @@ Page({
     }
   },
   
-  // 清除当前宠物的缓存
+  // 清除当前宠物相关缓存，强制刷新
   clearPetCache() {
-    // 清除所有缓存，强制刷新
-    cache.removeCache('pets');
-    cache.removeCache('weight');
-    cache.removeCache('history');
-    cache.removeCache('today');
-    cache.removeCache('schedule');
+    cache.invalidatePetRelatedCache();
+  },
+
+  buildChartState(records, rangeKey) {
+    const allRecords = Array.isArray(records) ? records : [];
+    const filtered = this.filterWeightRecords(allRecords, rangeKey);
+    const width = Math.max(600, filtered.length * 118);
+    const geometry = this.getChartGeometry(filtered, width, this.data.chartHeight || 400);
+    return {
+      records: filtered,
+      width,
+      recordText: filtered.length === allRecords.length
+        ? `${filtered.length} 条记录`
+        : `${filtered.length}/${allRecords.length} 条记录`,
+      insight: this.buildChartInsight(filtered)
+    };
+  },
+
+  filterWeightRecords(records, rangeKey) {
+    if (!records.length || rangeKey === 'all') return records;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    let start = null;
+
+    if (rangeKey === '30' || rangeKey === '90') {
+      start = new Date(todayStart);
+      start.setDate(start.getDate() - Number(rangeKey));
+    } else if (rangeKey === 'year') {
+      start = new Date(todayStart.getFullYear(), 0, 1);
+    }
+
+    if (!start) return records;
+    return records.filter(item => {
+      const day = app.toLocalDay(item.record_date);
+      return day && day >= start;
+    });
+  },
+
+  buildChartInsight(records) {
+    if (!records.length) return '该范围暂无体重记录';
+    if (records.length === 1) return `${records[0].weight}g`;
+
+    const first = Number(records[0].weight) || 0;
+    const last = Number(records[records.length - 1].weight) || 0;
+    const weights = records.map(r => Number(r.weight) || 0);
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    return `${first}g → ${last}g · ${formatSigned(last - first)} · ${min}g-${max}g`;
+  },
+
+  onChartRangeTap(e) {
+    const key = e.currentTarget.dataset.key;
+    if (!key || key === this.data.chartRange) return;
+
+    const chartState = this.buildChartState(this.data.weightRecords, key);
+    this.setData({
+      chartRange: key,
+      displayWeightRecords: chartState.records,
+      chartRecordText: chartState.recordText,
+      chartInsight: chartState.insight,
+      chartContainerWidth: chartState.width,
+      chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
+      selectedChartIndex: -1,
+      chartScrollLeft: 0
+    }, () => {
+      if (this.data.displayWeightRecords.length > 0) this.initCanvas();
+    });
+  },
+
+  getChartGeometry(records, width, height) {
+    const padding = { top: 42, right: 44, bottom: 56, left: 62 };
+    if (!records.length) return { padding, minWeight: 0, maxWeight: 0, weightRange: 1, points: [] };
+
+    const weights = records.map(r => Number(r.weight) || 0);
+    let minWeight = Math.floor(Math.min(...weights) / 10) * 10;
+    let maxWeight = Math.ceil(Math.max(...weights) / 10) * 10;
+    if (minWeight === maxWeight) {
+      minWeight = Math.max(0, minWeight - 10);
+      maxWeight += 10;
+    }
+
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const weightRange = maxWeight - minWeight || 1;
+    const points = records.map((item, index) => {
+      const x = padding.left + (records.length === 1 ? chartWidth / 2 : (chartWidth * index) / (records.length - 1));
+      const weight = Number(item.weight) || 0;
+      const y = padding.top + chartHeight - ((weight - minWeight) / weightRange) * chartHeight;
+      return { x, y, weight, record: item, index };
+    });
+
+    return { padding, minWeight, maxWeight, weightRange, chartWidth, chartHeight, points };
+  },
+
+  findNearestChartPoint(x) {
+    const geometry = this.getChartGeometry(
+      this.data.displayWeightRecords,
+      this.data.chartWidth || this.data.chartContainerWidth,
+      this.data.chartHeight || 400
+    );
+    if (!geometry.points.length) return null;
+    return geometry.points.reduce((best, point) => {
+      return Math.abs(point.x - x) < Math.abs(best.x - x) ? point : best;
+    }, geometry.points[0]);
+  },
+
+  onChartTouch(e) {
+    const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+    if (!touch) return;
+    const point = this.findNearestChartPoint(Number(touch.x));
+    if (!point) return;
+
+    const records = this.data.displayWeightRecords;
+    const prev = point.index > 0 ? records[point.index - 1] : null;
+    const delta = prev ? point.weight - (Number(prev.weight) || 0) : 0;
+    const currentDay = app.toLocalDay(point.record.record_date);
+    const prevDay = prev ? app.toLocalDay(prev.record_date) : null;
+    const intervalDays = currentDay && prevDay
+      ? Math.max(0, Math.round((currentDay - prevDay) / (1000 * 60 * 60 * 24)))
+      : 0;
+    const tooltipWidth = 170;
+    const tooltipHeight = 104;
+    const chartWidth = this.data.chartWidth || this.data.chartContainerWidth;
+    const chartHeight = this.data.chartHeight || 400;
+
+    this.setData({
+      selectedChartIndex: point.index,
+      chartTooltip: {
+        visible: true,
+        left: clamp(point.x + 12, 12, chartWidth - tooltipWidth - 12),
+        top: clamp(point.y - tooltipHeight - 8, 12, chartHeight - tooltipHeight - 12),
+        date: point.record.record_date,
+        weight: `${point.weight}g`,
+        deltaText: prev ? formatSigned(delta) : '起点',
+        intervalText: prev ? `${intervalDays} 天` : '首次记录'
+      }
+    }, () => {
+      this.drawWeightChart(this.data.displayWeightRecords, point.index);
+    });
+  },
+
+  onChartTouchEnd() {
+    if (this.data.selectedChartIndex >= 0) {
+      this.drawWeightChart(this.data.displayWeightRecords, this.data.selectedChartIndex);
+    }
   },
 
   // 绘制体重图表
-  drawWeightChart(records) {
+  drawWeightChart(records, selectedIndex) {
     const canvas = this.data.canvasInstance;
     if (!canvas) {
       console.error('❌ Canvas 实例未准备好');
@@ -300,113 +415,163 @@ Page({
     const ctx = canvas.getContext('2d');
     const width = this.data.chartWidth || 300;
     const height = this.data.chartHeight || 400;
-    const padding = { top: 50, right: 40, bottom: 20, left: 60 };  // 底部 padding 减少，因为不需要画 X 轴标签
-
-    console.log('✅ 开始绘制图表，记录数:', records.length, '画布:', width, 'x', height);
-    
-    // 测试：先画一个红色方块，验证 Canvas 是否可见
-    ctx.fillStyle = '#FF0000';
-    ctx.fillRect(10, 10, 50, 50);
-    console.log('🔴 绘制了红色测试方块 (10,10,50,50)');
-
-    // 清空画布
     ctx.clearRect(0, 0, width, height);
+    if (!records || records.length === 0) return;
 
-    // 准备数据（全部显示）
     const data = records;
-    const weights = data.map(r => r.weight);
-    // Y 轴刻度改为整数（10 的倍数）
-    const minWeight = Math.floor(Math.min(...weights) / 10) * 10;
-    const maxWeight = Math.ceil(Math.max(...weights) / 10) * 10;
-    const weightRange = maxWeight - minWeight || 1;
+    const geometry = this.getChartGeometry(data, width, height);
+    const { padding, minWeight, maxWeight, weightRange, chartWidth, chartHeight, points } = geometry;
+    const selected = typeof selectedIndex === 'number' ? selectedIndex : -1;
+    const weights = points.map(p => p.weight);
+    const minActual = Math.min(...weights);
+    const maxActual = Math.max(...weights);
+    const minIndex = points.findIndex(p => p.weight === minActual);
+    const maxIndex = points.findIndex(p => p.weight === maxActual);
+    const currentIndex = points.length - 1;
+    const initialWeight = Number(this.data.initialWeight) || 0;
 
-    const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
-    const xStep = chartWidth / (data.length - 1 || 1);
-
-    console.log('图表参数:', {
-      width, height, chartWidth, chartHeight, xStep,
-      minWeight, maxWeight, weightRange,
-      dataPoints: data.length
-    });
+    const colors = {
+      up: '#2EAD6B',
+      down: '#E06B4F',
+      flat: '#8A98A8',
+      grid: '#EAF0ED',
+      text: '#65736E',
+      primary: '#4A9C7B',
+      fillTop: 'rgba(74, 156, 123, 0.22)',
+      fillBottom: 'rgba(74, 156, 123, 0.03)'
+    };
 
     // 绘制网格线和 Y 轴标签
-    ctx.strokeStyle = '#EEEEEE';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 5; i++) {
       const y = padding.top + (chartHeight / 5) * i;
       ctx.beginPath();
+      ctx.strokeStyle = colors.grid;
       ctx.moveTo(padding.left, y);
       ctx.lineTo(width - padding.right, y);
       ctx.stroke();
 
-      // Y 轴标签（整数，字体变小）
       const weightValue = maxWeight - (weightRange / 5) * i;
-      ctx.fillStyle = '#666666';
-      ctx.font = '18px sans-serif';  // 字体从 25px 改为 18px
+      ctx.fillStyle = colors.text;
+      ctx.font = '18px sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(Math.round(weightValue), padding.left - 10, y + 5);  // 取整数
+      ctx.fillText(Math.round(weightValue), padding.left - 10, y + 5);
     }
 
-    // 绘制折线
-    ctx.beginPath();
-    ctx.strokeStyle = '#4A9C7B';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    ctx.fillStyle = colors.text;
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('g', padding.left, padding.top - 16);
 
-    data.forEach((item, index) => {
-      const x = padding.left + xStep * index;
-      const y = padding.top + chartHeight - ((item.weight - minWeight) / weightRange) * chartHeight;
-
-      if (index === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
-    ctx.stroke();
-
-    // 绘制渐变填充
-    const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-    gradient.addColorStop(0, 'rgba(74, 156, 123, 0.3)');
-    gradient.addColorStop(1, 'rgba(74, 156, 123, 0.05)');
-
-    ctx.lineTo(padding.left + xStep * (data.length - 1), height - padding.bottom);
-    ctx.lineTo(padding.left, height - padding.bottom);
-    ctx.closePath();
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-// 绘制数据点
-    data.forEach((item, index) => {
-      const x = padding.left + xStep * index;
-      const y = padding.top + chartHeight - ((item.weight - minWeight) / weightRange) * chartHeight;
-
-      // 外圈
+    if (initialWeight > 0 && initialWeight >= minWeight && initialWeight <= maxWeight) {
+      const baseY = padding.top + chartHeight - ((initialWeight - minWeight) / weightRange) * chartHeight;
+      ctx.save();
+      if (ctx.setLineDash) ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = 'rgba(74, 156, 123, 0.42)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x, y, 8, 0, 2 * Math.PI);
-      ctx.fillStyle = '#FFFFFF';
+      ctx.moveTo(padding.left, baseY);
+      ctx.lineTo(width - padding.right, baseY);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(74, 156, 123, 0.9)';
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('初始 ' + initialWeight + 'g', padding.left + 8, baseY - 8);
+    }
+
+    if (points.length > 1) {
+      const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+      gradient.addColorStop(0, colors.fillTop);
+      gradient.addColorStop(1, colors.fillBottom);
+
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.lineTo(points[points.length - 1].x, padding.top + chartHeight);
+      ctx.lineTo(points[0].x, padding.top + chartHeight);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
       ctx.fill();
-      ctx.strokeStyle = '#4A9C7B';
-      ctx.lineWidth = 3;
+
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const next = points[i];
+        const delta = next.weight - prev.weight;
+        ctx.beginPath();
+        ctx.strokeStyle = delta > 0 ? colors.up : (delta < 0 ? colors.down : colors.flat);
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(next.x, next.y);
+        ctx.stroke();
+      }
+    }
+
+    const labelPoint = (point, label, color, offsetY) => {
+      ctx.fillStyle = color;
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, point.x, clamp(point.y + offsetY, padding.top + 14, padding.top + chartHeight + 26));
+    };
+
+    points.forEach((point, index) => {
+      const isSelected = index === selected;
+      const isCurrent = index === currentIndex;
+      const isMin = index === minIndex;
+      const isMax = index === maxIndex;
+      const radius = isSelected ? 11 : (isCurrent || isMin || isMax ? 8 : 6);
+      const strokeColor = isSelected ? '#1D6F57' : (isCurrent ? colors.primary : '#FFFFFF');
+
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius + 4, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+      ctx.fillStyle = index > 0 && point.weight < points[index - 1].weight ? colors.down : colors.up;
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = isSelected ? 4 : 3;
       ctx.stroke();
 
-      // 内点
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, 2 * Math.PI);
-      ctx.fillStyle = '#4A9C7B';
-      ctx.fill();
-
-      // X 轴标签已移除，改为在下方日期对照表中显示
+      if (isMax) labelPoint(point, '最高 ' + point.weight + 'g', colors.up, -16);
+      if (isMin && minIndex !== maxIndex) labelPoint(point, '最低 ' + point.weight + 'g', colors.down, 24);
+      if (isCurrent && currentIndex !== maxIndex && currentIndex !== minIndex) {
+        labelPoint(point, '当前 ' + point.weight + 'g', colors.primary, -16);
+      }
     });
-    // 标题
-    ctx.fillStyle = '#333333';
-    ctx.font = 'bold 25px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('体重变化趋势 (g)', width / 2, 30);
 
-    console.log('✅ 图表绘制完成');
+    if (selected >= 0 && points[selected]) {
+      const point = points[selected];
+      ctx.save();
+      if (ctx.setLineDash) ctx.setLineDash([6, 8]);
+      ctx.strokeStyle = 'rgba(29, 111, 87, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(point.x, padding.top);
+      ctx.lineTo(point.x, padding.top + chartHeight);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const tickIndexes = points.length <= 2
+      ? points.map((_, index) => index)
+      : [0, Math.floor((points.length - 1) / 2), points.length - 1];
+    const usedTicks = [];
+    tickIndexes.forEach(index => {
+      if (usedTicks.indexOf(index) >= 0) return;
+      usedTicks.push(index);
+      const point = points[index];
+      ctx.fillStyle = colors.text;
+      ctx.font = '17px sans-serif';
+      ctx.textAlign = index === 0 ? 'left' : (index === points.length - 1 ? 'right' : 'center');
+      ctx.fillText(String(point.record.record_date).slice(5), point.x, height - 22);
+    });
   },
 
   // 喂食打卡
@@ -444,9 +609,6 @@ Page({
     wx.previewImage({
       urls: [avatarUrl],
       current: avatarUrl,
-      success: () => {
-        console.log('头像预览成功');
-      },
       fail: (err) => {
         console.error('头像预览失败:', err);
         wx.showToast({ title: '预览失败', icon: 'none' });
@@ -536,33 +698,4 @@ Page({
     }
   },
 
-  // 图表滚动事件
-  onChartScroll(e) {
-    if (this.data.isSyncingScroll) return;
-
-    this.setData({
-      isSyncingScroll: true,
-      tableScrollLeft: e.detail.scrollLeft
-    }, () => {
-      // 延迟重置，避免频繁触发
-      setTimeout(() => {
-        this.setData({ isSyncingScroll: false });
-      }, 50);
-    });
-  },
-
-  // 日期表滚动事件
-  onDateTableScroll(e) {
-    if (this.data.isSyncingScroll) return;
-
-    this.setData({
-      isSyncingScroll: true,
-      // 图表和日期表的宽度比例可能不同，需要按比例同步
-      chartScrollLeft: e.detail.scrollLeft * (this.data.chartContainerWidth / (this.data.weightRecords.length * 100))
-    }, () => {
-      setTimeout(() => {
-        this.setData({ isSyncingScroll: false });
-      }, 50);
-    });
-  }
 });
