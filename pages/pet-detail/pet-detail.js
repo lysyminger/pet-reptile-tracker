@@ -32,6 +32,7 @@ Page({
     chartContainerWidth: 600,  // 图表容器宽度，根据数据点动态计算
     canvasInstance: null,
     chartScrollLeft: 0,  // 图表滚动位置
+    chartZoom: 1,        // 曲线横向缩放倍数（双指捏合调整，0.5~4）
     chartRange: 'all',
     chartRangeOptions: [
       { key: 'all', label: '全部' },
@@ -79,6 +80,7 @@ Page({
           const canvas = res[0].node;
           const ctx = canvas.getContext('2d');
           const dpr = wx.getSystemInfoSync().pixelRatio;
+          this._dpr = dpr;
 
           const width = dynamicWidth;
           const height = 400;
@@ -127,7 +129,7 @@ Page({
       const hasSubSchedule = !!petInfo.next_sub_date;
 
       const ascendingWeightRecords = weightRecords.slice().reverse();
-      const chartState = this.buildChartState(ascendingWeightRecords, this.data.chartRange);
+      const chartState = this.buildChartState(ascendingWeightRecords, this.data.chartRange, 1);
 
       const tmpl = cats.getCategory(petInfo.category);
 
@@ -143,6 +145,8 @@ Page({
         chartInsight: chartState.insight,
         chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
         selectedChartIndex: -1,
+        chartZoom: 1,
+        chartScrollLeft: 0,
         historyRecords,
         nextFeedDate: petInfo.next_feed_date || '',
         nextSubDate: petInfo.next_sub_date || '',
@@ -260,11 +264,25 @@ Page({
     cache.invalidatePetRelatedCache();
   },
 
-  buildChartState(records, rangeKey) {
+  // 图表可视宽度（按屏宽算，留出卡片内边距）；zoom=1 时正好铺满一屏不滚动
+  _chartViewport() {
+    if (!this._viewport) {
+      const sys = wx.getSystemInfoSync();
+      const w = sys.windowWidth || 375;
+      // 容器(24rpx*2) + 滚动区(20rpx*2) = 88rpx 内边距，换算成 px 后扣掉，确保一屏正好放下
+      const padPx = Math.ceil(88 * w / 750);
+      this._viewport = Math.max(260, w - padPx);
+    }
+    return this._viewport;
+  },
+
+  buildChartState(records, rangeKey, zoom) {
     const allRecords = Array.isArray(records) ? records : [];
     const filtered = this.filterWeightRecords(allRecords, rangeKey);
-    const width = Math.max(600, filtered.length * 118);
-    const geometry = this.getChartGeometry(filtered, width, this.data.chartHeight || 400);
+    const z = clamp(zoom || this.data.chartZoom || 1, 1, 4);
+    const viewport = this._chartViewport();
+    // zoom=1 铺满屏幕（全部数据一屏可见）；放大后变宽、可左右滑看细节
+    const width = Math.max(viewport, Math.round(viewport * z));
     return {
       records: filtered,
       width,
@@ -311,13 +329,16 @@ Page({
     const key = e.currentTarget.dataset.key;
     if (!key || key === this.data.chartRange) return;
 
-    const chartState = this.buildChartState(this.data.weightRecords, key);
+    const chartState = this.buildChartState(this.data.weightRecords, key, 1);
+    this._scrollLeft = 0;
     this.setData({
       chartRange: key,
+      chartZoom: 1,
       displayWeightRecords: chartState.records,
       chartRecordText: chartState.recordText,
       chartInsight: chartState.insight,
       chartContainerWidth: chartState.width,
+      chartWidth: chartState.width,
       chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
       selectedChartIndex: -1,
       chartScrollLeft: 0
@@ -363,12 +384,125 @@ Page({
     }, geometry.points[0]);
   },
 
-  onChartTouch(e) {
-    const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
-    if (!touch) return;
-    const point = this.findNearestChartPoint(Number(touch.x));
-    if (!point) return;
+  // scroll-view 上报滚动位置（缩放时据此保持视觉中心，平时不写回 data 避免抖动）
+  onChartScroll(e) {
+    this._scrollLeft = e.detail.scrollLeft;
+  },
 
+  _dist(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  },
+
+  onChartTouchStart(e) {
+    const ts = e.touches || [];
+    if (ts.length >= 2) {
+      // 双指：进入缩放
+      this._pinch = { startDist: this._dist(ts[0], ts[1]) || 1, startZoom: this.data.chartZoom };
+      this._touch = null;
+      if (this.data.chartTooltip.visible) this._hideTooltip();
+      return;
+    }
+    this._pinch = null;
+    const t = ts[0];
+    if (t) this._touch = { x: t.x, y: t.y, t: Date.now(), moved: false };
+  },
+
+  onChartTouchMove(e) {
+    const ts = e.touches || [];
+    if (this._pinch && ts.length >= 2) {
+      const ratio = this._dist(ts[0], ts[1]) / this._pinch.startDist;
+      this._applyZoom(this._pinch.startZoom * ratio, (ts[0].x + ts[1].x) / 2);
+      return;
+    }
+    // 单指：判定为拖动（交给 scroll-view 原生滚动），不弹 tooltip
+    if (this._touch) {
+      const t = ts[0];
+      if (t && !this._touch.moved &&
+          (Math.abs(t.x - this._touch.x) > 8 || Math.abs(t.y - this._touch.y) > 8)) {
+        this._touch.moved = true;
+        if (this.data.chartTooltip.visible) this._hideTooltip();
+      }
+    }
+  },
+
+  onChartTouchEnd() {
+    if (this._pinch) { this._pinch = null; return; }
+    const t = this._touch;
+    this._touch = null;
+    if (!t || t.moved) return; // 拖动结束，不处理点按
+
+    // 双击：还原缩放 / 收起明细
+    const now = Date.now();
+    if (this._lastTap && now - this._lastTap < 280) {
+      this._lastTap = 0;
+      if (this.data.chartZoom > 1) this._applyZoom(1);
+      else if (this.data.chartTooltip.visible) this._hideTooltip();
+      return;
+    }
+    this._lastTap = now;
+
+    // 轻点：切换该点明细（再点同一点收起）
+    const point = this.findNearestChartPoint(Number(t.x));
+    if (!point) return;
+    if (this.data.chartTooltip.visible && this.data.selectedChartIndex === point.index) {
+      this._hideTooltip();
+    } else {
+      this._showTooltipAt(point);
+    }
+  },
+
+  // 应用缩放：重算宽度并保持捏合中心稳定，再清晰重绘
+  _applyZoom(zoom, focusX) {
+    const z = clamp(Math.round(zoom * 100) / 100, 1, 4);
+    if (z === this.data.chartZoom) return;
+    const now = Date.now();
+    if (this._zoomTs && now - this._zoomTs < 24) return; // 节流，避免每帧重排
+    this._zoomTs = now;
+
+    const oldWidth = this.data.chartContainerWidth || 1;
+    const state = this.buildChartState(this.data.weightRecords, this.data.chartRange, z);
+    const viewport = this._chartViewport();
+
+    // 让捏合中心对应的数据点缩放后仍停在原视觉位置
+    const oldScroll = this._scrollLeft || 0;
+    const focusContent = focusX != null ? focusX : (oldScroll + viewport / 2);
+    let newScroll = Math.round(focusContent * (state.width / oldWidth) - (focusContent - oldScroll));
+    newScroll = Math.max(0, Math.min(newScroll, Math.max(0, state.width - viewport)));
+    this._scrollLeft = newScroll;
+
+    this.setData({
+      chartZoom: z,
+      displayWeightRecords: state.records,
+      chartRecordText: state.recordText,
+      chartContainerWidth: state.width,
+      chartWidth: state.width,
+      chartScrollLeft: newScroll,
+      chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
+      selectedChartIndex: -1
+    }, () => this._resizeCanvas(state.width));
+  },
+
+  _resizeCanvas(width) {
+    const canvas = this.data.canvasInstance;
+    if (!canvas) return;
+    const dpr = this._dpr || wx.getSystemInfoSync().pixelRatio;
+    const height = this.data.chartHeight || 400;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    this.drawWeightChart(this.data.displayWeightRecords, this.data.selectedChartIndex);
+  },
+
+  _hideTooltip() {
+    this.setData({
+      chartTooltip: Object.assign({}, this.data.chartTooltip, { visible: false }),
+      selectedChartIndex: -1
+    }, () => this.drawWeightChart(this.data.displayWeightRecords, -1));
+  },
+
+  _showTooltipAt(point) {
     const records = this.data.displayWeightRecords;
     const prev = point.index > 0 ? records[point.index - 1] : null;
     const delta = prev ? point.weight - (Number(prev.weight) || 0) : 0;
@@ -393,15 +527,7 @@ Page({
         deltaText: prev ? formatSigned(delta) : '起点',
         intervalText: prev ? `${intervalDays} 天` : '首次记录'
       }
-    }, () => {
-      this.drawWeightChart(this.data.displayWeightRecords, point.index);
-    });
-  },
-
-  onChartTouchEnd() {
-    if (this.data.selectedChartIndex >= 0) {
-      this.drawWeightChart(this.data.displayWeightRecords, this.data.selectedChartIndex);
-    }
+    }, () => this.drawWeightChart(this.data.displayWeightRecords, point.index));
   },
 
   // 绘制体重图表

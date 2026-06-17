@@ -230,6 +230,15 @@
   box-shadow: 0 4rpx 14rpx rgba(74, 156, 123, 0.18);
 }
 
+.chart-gesture-hint {
+  display: block;
+  margin-top: 10rpx;
+  text-align: center;
+  font-size: 20rpx;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
 .chart-insight {
   padding: 8rpx 28rpx 0;
 }

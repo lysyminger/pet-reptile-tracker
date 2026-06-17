@@ -87,6 +87,7 @@
           <text>{{item.label}}</text>
         </view>
       </view>
+      <text class="chart-gesture-hint">双指放大 · 轻点查看 · 双击还原</text>
     </view>
 
     <view class="chart-insight" wx:if="{{weightRecords.length > 0}}">
@@ -94,15 +95,15 @@
     </view>
 
     <!-- 可滑动的图表容器 -->
-    <scroll-view class="chart-scroll" scroll-x="true" wx:if="{{displayWeightRecords.length > 0}}" scroll-left="{{chartScrollLeft}}">
+    <scroll-view class="chart-scroll" scroll-x="{{chartZoom > 1}}" wx:if="{{displayWeightRecords.length > 0}}" scroll-left="{{chartScrollLeft}}" bindscroll="onChartScroll">
       <view class="chart-wrapper" style="width: {{chartContainerWidth}}px;">
         <canvas
           type="2d"
           id="weightChart"
           canvas-id="weightChart"
           class="weight-chart"
-          bindtouchstart="onChartTouch"
-          bindtouchmove="onChartTouch"
+          bindtouchstart="onChartTouchStart"
+          bindtouchmove="onChartTouchMove"
           bindtouchend="onChartTouchEnd"
           bindtouchcancel="onChartTouchEnd"
         ></canvas>
