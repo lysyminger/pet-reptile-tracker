@@ -132,36 +132,25 @@ Page({
           return;
         }
 
-        await api.post('/feed-logs', {
+        // 原子接口：写日志 + 更新 next_feed_date 在后端一个事务里完成
+        await api.post('/check-ins/feed', {
           pet_id: petId,
           feed_date: recordDate,
           food_type: foodType,
           amount: amount || ''
         });
 
-        const pet = await api.get('/pets/' + petId);
-        const nextDate = app.dateAdd(recordDate, pet.feed_interval);
-        await api.put('/pets/' + petId, { next_feed_date: nextDate });
-
       } else if (recordType === 'substrate') {
         const subType = customSubstrate || selectedSubstrate;
 
-        await api.post('/substrate-logs', {
+        await api.post('/check-ins/substrate', {
           pet_id: petId,
           change_date: recordDate,
           sub_type: subType || ''
         });
-
-        const pet = await api.get('/pets/' + petId);
-        const nextDate = app.dateAdd(recordDate, pet.sub_interval);
-        await api.put('/pets/' + petId, { next_sub_date: nextDate });
       }
 
-      cache.removeCache('pets');
-      cache.removeCache('weight');
-      cache.removeCache('history');
-      cache.removeCache('schedule');
-      cache.removeCache('today');
+      cache.invalidatePetRelatedCache();
 
       wx.hideLoading();
       wx.showToast({ title: '保存成功', icon: 'success' });
@@ -198,11 +187,7 @@ Page({
             await this.recalculateNextSubDate(petId);
           }
 
-          cache.removeCache('pets');
-          cache.removeCache('schedule');
-          cache.removeCache('weight');
-          cache.removeCache('history');
-          cache.removeCache('today');
+          cache.invalidatePetRelatedCache();
 
           wx.hideLoading();
           wx.showToast({ title: '删除成功', icon: 'success' });

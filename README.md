@@ -258,6 +258,13 @@ await api.put(`/pets/${petId}`, { next_feed_date: nextDate });
 
 ## 更新日志
 
+### v2.3.1 — 打卡原子化 & 内部健壮性
+- 🧱 打卡改为后端原子接口 `POST /check-ins/feed`、`/check-ins/substrate`：在一个事务里完成「写日志 + 更新下次计划日期」，根除「日志已写但排期未更新」的半成功状态（向后兼容，旧接口保留）
+- 📈 成长曲线重做：分段涨跌配色、初始基准线、最高/最低/当前标注、范围切换与触摸提示
+- 🧹 统一缓存语义：`history` 拆为 `recentHistory`(首页数组) / `petHistory`(详情对象)，新增 `cache.invalidatePetRelatedCache()` 收口各处失效逻辑
+- 🕐 日期解析统一到 `app.toLocalDay()`，`dateDiff`/`dateAdd` 走本地零点，消除跨时区差一天隐患
+- 🧽 清理详情页调试日志与废弃代码
+
 ### v2.3.0 — 成长相册 & 多品类
 - 📷 新增「相册」底部 Tab：按宠物切换、按拍摄日期分组的时间轴；先选图再选日期，支持长按改日期/删除
 - 🔍 高清查看器：`movable-view` 双指缩放(0.5~6x) + 自由拖动；图片本地缓存(下载一次复用)，`/uploads` 1 年强缓存

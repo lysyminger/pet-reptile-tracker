@@ -59,6 +59,6 @@
 
   <!-- 版本信息 -->
   <view class="version-info">
-    <text class="version-text">Version 2.3.0</text>
+    <text class="version-text">Version 2.3.1</text>
   </view>
 </view>

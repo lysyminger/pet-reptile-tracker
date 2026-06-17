@@ -56,15 +56,24 @@ App({
     return `${year}-${month}-${day}`;
   },
 
-  // 计算日期差（天）
-  dateDiff(date1, date2) {
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    const diffTime = d1 - d2;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // 取 "YYYY-MM-DD"（或带时间）中的年月日，构造「本地零点」的 Date。
+  // 统一用它解析日期，避免 new Date('YYYY-MM-DD') 按 UTC 解析在部分时区差一天。
+  // 解析失败返回 null，调用方可自行回退到 new Date()。
+  toLocalDay(s) {
+    if (!s) return null;
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   },
 
-  // 日期相加（天）
+  // 计算日期差（天）。两端都按本地零点解析，结果为整数天。
+  dateDiff(date1, date2) {
+    const d1 = this.toLocalDay(date1) || new Date(date1);
+    const d2 = this.toLocalDay(date2) || new Date(date2);
+    return Math.round((d1 - d2) / (1000 * 60 * 60 * 24));
+  },
+
+  // 日期相加（天）。按本地零点解析，避免时区偏移。
   dateAdd(date, days) {
     if (!date) {
       console.error('dateAdd: date 参数为空', date);
@@ -73,9 +82,9 @@ App({
     const daysNum = parseInt(days);
     if (isNaN(daysNum)) {
       console.error('dateAdd: days 参数无效', days);
-      return this.formatDate(new Date(date));
+      return this.formatDate(this.toLocalDay(date) || new Date(date));
     }
-    const d = new Date(date);
+    const d = this.toLocalDay(date) || new Date(date);
     if (isNaN(d.getTime())) {
       console.error('dateAdd: 日期格式无效', date);
       return this.formatDate(new Date());
