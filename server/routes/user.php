@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function user_get(): void {
     $openid = $GLOBALS['openid'];
-    $stmt = db()->prepare('SELECT openid, nickname, avatarUrl, phone, createdAt, updatedAt FROM user_info WHERE openid = ?');
+    $stmt = db()->prepare('SELECT openid, nickname, avatarUrl, phone, email, createdAt, updatedAt FROM user_info WHERE openid = ?');
     $stmt->execute([$openid]);
     $row = $stmt->fetch();
     json_ok($row ?: null);
@@ -14,13 +14,16 @@ function user_upsert(): void {
     $body   = request_body();
 
     // 只允许更新这几个字段，避免客户端污染 openid 等
-    $allowed = ['nickname', 'avatarUrl', 'phone'];
+    $allowed = ['nickname', 'avatarUrl', 'phone', 'email'];
     $fields  = [];
     $values  = [];
     foreach ($allowed as $k) {
         if (array_key_exists($k, $body)) {
             $fields[] = $k;
-            $values[] = is_string($body[$k]) ? $body[$k] : null;
+            $v = is_string($body[$k]) ? $body[$k] : null;
+            // 空邮箱按 NULL 存：email 有唯一索引，多个空串会冲突，NULL 则不会
+            if ($k === 'email' && ($v === null || trim((string)$v) === '')) $v = null;
+            $values[] = $v;
         }
     }
 

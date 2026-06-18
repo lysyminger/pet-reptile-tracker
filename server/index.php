@@ -24,6 +24,9 @@ $routes = [
     // 鸿蒙端账号密码登录（纯新增，不影响微信登录）
     ['POST',   '#^/auth/register$#',         'auth.php',      'auth_register'],
     ['POST',   '#^/auth/login-app$#',        'auth.php',      'auth_login_app'],
+    // 邮箱验证码 + 找回密码（纯新增，小程序不调用）
+    ['POST',   '#^/auth/send-code$#',        'auth.php',      'auth_send_code'],
+    ['POST',   '#^/auth/reset-password$#',   'auth.php',      'auth_reset_password'],
 
     // 微信消息推送回调（内容安全异步结果）：GET 校验 URL，POST 收推送
     ['GET',    '#^/wx/callback$#',           'wxcallback.php', 'wx_callback'],
@@ -72,6 +75,8 @@ $PUBLIC_ROUTES = [
     '#^/auth/login$#',
     '#^/auth/register$#',
     '#^/auth/login-app$#',
+    '#^/auth/send-code$#',
+    '#^/auth/reset-password$#',
     '#^/wx/callback$#',
 ];
 
