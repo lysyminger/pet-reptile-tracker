@@ -2,6 +2,21 @@
 // 宠物相册：列表 / 新增 / 删除。归属一律以 JWT 的 openid 为准。
 declare(strict_types=1);
 
+// 是否存在可选的 length_cm 列（鸿蒙端体长曲线用）。未执行 ALTER 时静默忽略，绝不影响相册。
+// 小程序自身从不读写该列，行为完全不变。
+function photos_has_length(): bool {
+    static $has = null;
+    if ($has === null) {
+        try {
+            $stmt = db()->query("SHOW COLUMNS FROM pet_photos LIKE 'length_cm'");
+            $has = (bool)$stmt->fetch();
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
 // GET /pet-photos?pet_id=X —— 按宠物列出；不传 pet_id 则列出该用户所有宠物的照片
 // 排序按拍摄时间(taken_at)优先、其次创建时间，倒序（时间轴最新在前）
 function photos_list(): void {
@@ -57,6 +72,10 @@ function photos_create(): void {
         'taken_at'   => $takenAt,
         'created_at' => $now,
     ];
+    // 可选体长（仅当列存在且客户端传了数值）——纯增量，小程序不传此字段
+    if (photos_has_length() && isset($body['length_cm']) && is_numeric($body['length_cm'])) {
+        $row['length_cm'] = (float)$body['length_cm'];
+    }
     $cols = array_keys($row);
     $sql = 'INSERT INTO pet_photos (' . implode(',', $cols) . ') VALUES (' . implode(',', array_fill(0, count($cols), '?')) . ')';
     db()->prepare($sql)->execute(array_values($row));
@@ -83,6 +102,10 @@ function photos_update(string $id): void {
     }
     if (array_key_exists('caption', $body)) {
         $fields[] = 'caption = ?'; $vals[] = (string)$body['caption'];
+    }
+    if (photos_has_length() && array_key_exists('length_cm', $body)) {
+        $fields[] = 'length_cm = ?';
+        $vals[] = $body['length_cm'] === null || $body['length_cm'] === '' ? null : (float)$body['length_cm'];
     }
     if (empty($fields)) json_error('无可更新字段');
 
